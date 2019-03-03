@@ -6,9 +6,11 @@ use std::iter::FromIterator;
 use std::process;
 
 mod grammar;
+mod production;
 mod symbol;
 
 use crate::grammar::Grammar;
+use crate::production::Production;
 use crate::symbol::Symbol;
 
 const START_SYMBOL: &str = "S";
@@ -68,18 +70,20 @@ fn parse(filename: &String) -> Result<Grammar, io::Error> {
             .unwrap()
             .split("::|")
             .map(|case| {
-                case.trim()
-                    .split_whitespace()
-                    .map(|name| Symbol {
-                        name: name.to_owned(),
-                        terminal: terminals.contains(name),
-                    })
-                    .collect()
+                Production::new(
+                    case.trim()
+                        .split_whitespace()
+                        .map(|name| Symbol {
+                            name: name.to_owned(),
+                            terminal: terminals.contains(name),
+                        })
+                        .collect(),
+                )
             })
             .collect();
 
         grammar
-            .productions
+            .symbols
             .entry(head)
             .or_insert_with(Vec::new)
             .append(&mut body);
@@ -88,37 +92,39 @@ fn parse(filename: &String) -> Result<Grammar, io::Error> {
     Ok(grammar)
 }
 
-// TODO: Detect left recursion.
 fn verify(grammar: &Grammar) -> Result<(), String> {
-    let mut used_symbols: HashSet<&Symbol> = HashSet::from_iter(
-        grammar
-            .productions
-            .values()
-            .flat_map(|value| value.iter().flatten().collect::<Vec<&Symbol>>()),
-    );
+    let mut terminals: HashSet<&Symbol> =
+        HashSet::from_iter(grammar.symbols.values().flat_map(|value| {
+            value
+                .iter()
+                .flat_map(|production| &production.terminals)
+                .collect::<Vec<&Symbol>>()
+        }));
 
     let start_symbol = Symbol {
         name: "S".to_owned(),
         terminal: true,
     };
 
-    used_symbols.insert(&start_symbol);
+    terminals.insert(&start_symbol);
 
-    for symbol in grammar.productions.keys() {
-        if !used_symbols.contains(symbol) {
+    for symbol in grammar.symbols.keys() {
+        if !terminals.contains(symbol) {
             return Err(format!("Symbol '{}' is unreachable", symbol.name));
         }
     }
 
+    // TODO: Detect left recursion.
+
     let mut completeness: HashMap<&Symbol, bool> = grammar
-        .productions
+        .symbols
         .iter()
         .map(|(symbol, productions)| {
             (
                 symbol,
                 productions
                     .iter()
-                    .any(|production| production.iter().all(|symbol| !symbol.terminal)),
+                    .any(|production| production.symbols.iter().all(|symbol| !symbol.terminal)),
             )
         })
         .collect();
@@ -128,22 +134,17 @@ fn verify(grammar: &Grammar) -> Result<(), String> {
             .iter()
             .filter(|(_, &complete)| !complete)
             .map(|(&symbol, _)| {
-                let used_symbols: Vec<&Symbol> = grammar
-                    .productions
+                let terminals: Vec<&Symbol> = grammar
+                    .symbols
                     .get(symbol)
                     .unwrap()
                     .iter()
-                    .flat_map(|symbols| {
-                        symbols
-                            .iter()
-                            .filter(|symbol| symbol.terminal)
-                            .collect::<Vec<&Symbol>>()
-                    })
+                    .flat_map(|production| &production.terminals)
                     .collect();
 
                 (
                     symbol,
-                    used_symbols
+                    terminals
                         .iter()
                         .any(|symbol| *completeness.get(symbol).unwrap()),
                 )
