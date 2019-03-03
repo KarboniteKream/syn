@@ -1,9 +1,16 @@
+use std::fmt::{self, Display, Formatter};
 use std::hash::{Hash, Hasher};
 
 #[derive(Clone, Debug)]
 pub struct Symbol {
     pub name: String,
     pub terminal: bool,
+}
+
+impl Display for Symbol {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", self.name)
+    }
 }
 
 impl PartialEq for Symbol {
