@@ -1,11 +1,18 @@
 use std::collections::{HashMap, HashSet};
+use std::convert::identity;
 use std::env;
 use std::fs;
 use std::io;
 use std::iter::FromIterator;
 use std::process;
 
-type Grammar = HashMap<String, Vec<String>>;
+mod grammar;
+mod symbol;
+
+use crate::grammar::Grammar;
+use crate::symbol::Symbol;
+
+const START_SYMBOL: &str = "S";
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -27,9 +34,9 @@ fn main() {
 }
 
 // TODO: Convert to token parser.
-// TODO: Define start symbol in file, default to S.
+// TODO: Define start symbol in grammar file.
 fn read(filename: &String) -> Result<Grammar, io::Error> {
-    let mut grammar = Grammar::new();
+    let mut grammar = Grammar::new(START_SYMBOL.to_owned());
 
     let contents = fs::read_to_string(filename)?
         .lines()
@@ -46,22 +53,29 @@ fn read(filename: &String) -> Result<Grammar, io::Error> {
 
     for production in &productions {
         let mut split = production.splitn(2, "::=");
-        let head = split.next().unwrap().trim().to_owned();
+
+        let head = Symbol {
+            name: split.next().unwrap().trim().to_owned(),
+            terminal: true,
+        };
 
         let mut body = split
             .next()
             .unwrap()
             .split("::|")
-            .map(|e| {
-                e.trim()
+            .map(|case| {
+                case.trim()
                     .split_whitespace()
-                    .collect::<Vec<&str>>()
-                    .join(" ")
-                    .to_owned()
+                    .map(|name| Symbol {
+                        name: name.to_owned(),
+                        terminal: false,
+                    })
+                    .collect()
             })
             .collect();
 
         grammar
+            .productions
             .entry(head)
             .or_insert_with(Vec::new)
             .append(&mut body);
@@ -72,18 +86,21 @@ fn read(filename: &String) -> Result<Grammar, io::Error> {
 
 // TODO: Detect left recursion.
 fn verify(grammar: &Grammar) -> Result<(), String> {
-    let mut used_symbols: HashSet<&str> = HashSet::from_iter(grammar.values().flat_map(|value| {
-        value
-            .iter()
-            .flat_map(|e| e.split_whitespace())
-            .collect::<Vec<&str>>()
-    }));
+    let mut used_symbols: HashSet<Symbol> = HashSet::from_iter(
+        grammar
+            .productions
+            .values()
+            .flat_map(|value| value.iter().flat_map(identity).cloned().collect::<Vec<Symbol>>()),
+    );
 
-    used_symbols.insert("S");
+    used_symbols.insert(Symbol {
+        name: "S".to_owned(),
+        terminal: true,
+    });
 
-    for symbol in grammar.keys() {
-        if !used_symbols.contains(symbol.as_str()) {
-            return Err(format!("Symbol '{}' is unreachable", symbol));
+    for symbol in grammar.productions.keys() {
+        if !used_symbols.contains(symbol) {
+            return Err(format!("Symbol '{}' is unreachable", symbol.name));
         }
     }
 
