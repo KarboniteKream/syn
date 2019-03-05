@@ -3,20 +3,20 @@ use crate::symbol::Symbol;
 #[derive(Debug)]
 pub struct Production {
     pub symbols: Vec<Symbol>,
-    pub terminals: Vec<Symbol>,
+    pub nonterminals: Vec<Symbol>,
 }
 
 impl Production {
     pub fn new(symbols: Vec<Symbol>) -> Production {
-        let terminals = symbols
+        let nonterminals = symbols
             .iter()
-            .filter(|symbol| symbol.terminal)
+            .filter(|symbol| !symbol.terminal)
             .map(|symbol| symbol.clone())
             .collect();
 
         Production {
             symbols: symbols,
-            terminals: terminals,
+            nonterminals: nonterminals,
         }
     }
 }

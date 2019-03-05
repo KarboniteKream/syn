@@ -24,10 +24,16 @@ fn main() {
     }
 
     let filename = &args[1];
-    let grammar = parse(filename).expect("Unable to parse grammar");
+    let grammar = match parse(filename) {
+        Ok(grammar) => grammar,
+        Err(error) => {
+            eprintln!("Unable to parse file '{}': {}", filename, error);
+            process::exit(1);
+        }
+    };
 
-    if let Err(message) = verify(&grammar) {
-        eprintln!("Grammar '{}' is not valid: {}", filename, message);
+    if let Err(error) = verify(&grammar) {
+        eprintln!("Grammar '{}' is not valid: {}", filename, error);
         process::exit(1);
     }
 
@@ -52,7 +58,7 @@ fn parse(filename: &String) -> Result<Grammar, io::Error> {
         .filter(|line| !line.is_empty())
         .collect();
 
-    let terminals: HashSet<&str> = productions
+    let nonterminals: HashSet<&str> = productions
         .iter()
         .map(|production| production.splitn(2, "::=").next().unwrap().trim())
         .collect();
@@ -62,7 +68,7 @@ fn parse(filename: &String) -> Result<Grammar, io::Error> {
 
         let head = Symbol {
             name: split.next().unwrap().trim().to_owned(),
-            terminal: true,
+            terminal: false,
         };
 
         let mut body = split
@@ -75,7 +81,7 @@ fn parse(filename: &String) -> Result<Grammar, io::Error> {
                         .split_whitespace()
                         .map(|name| Symbol {
                             name: name.to_owned(),
-                            terminal: terminals.contains(name),
+                            terminal: !nonterminals.contains(name),
                         })
                         .collect(),
                 )
@@ -93,23 +99,23 @@ fn parse(filename: &String) -> Result<Grammar, io::Error> {
 }
 
 fn verify(grammar: &Grammar) -> Result<(), String> {
-    let mut terminals: HashSet<&Symbol> =
+    let mut nonterminals: HashSet<&Symbol> =
         HashSet::from_iter(grammar.symbols.values().flat_map(|value| {
             value
                 .iter()
-                .flat_map(|production| &production.terminals)
+                .flat_map(|production| &production.nonterminals)
                 .collect::<Vec<&Symbol>>()
         }));
 
     let start_symbol = Symbol {
         name: "S".to_owned(),
-        terminal: true,
+        terminal: false,
     };
 
-    terminals.insert(&start_symbol);
+    nonterminals.insert(&start_symbol);
 
     for symbol in grammar.symbols.keys() {
-        if !terminals.contains(symbol) {
+        if !nonterminals.contains(symbol) {
             return Err(format!("Symbol '{}' is unreachable", symbol.name));
         }
     }
@@ -124,7 +130,7 @@ fn verify(grammar: &Grammar) -> Result<(), String> {
                 symbol,
                 productions
                     .iter()
-                    .any(|production| production.symbols.iter().all(|symbol| !symbol.terminal)),
+                    .any(|production| production.symbols.iter().all(|symbol| symbol.terminal)),
             )
         })
         .collect();
@@ -134,17 +140,17 @@ fn verify(grammar: &Grammar) -> Result<(), String> {
             .iter()
             .filter(|(_, &complete)| !complete)
             .map(|(&symbol, _)| {
-                let terminals: Vec<&Symbol> = grammar
+                let nonterminals: Vec<&Symbol> = grammar
                     .symbols
                     .get(symbol)
                     .unwrap()
                     .iter()
-                    .flat_map(|production| &production.terminals)
+                    .flat_map(|production| &production.nonterminals)
                     .collect();
 
                 (
                     symbol,
-                    terminals
+                    nonterminals
                         .iter()
                         .any(|symbol| *completeness.get(symbol).unwrap()),
                 )
