@@ -1,8 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::io;
-use std::iter::FromIterator;
 use std::process;
 
 mod grammar;
@@ -11,7 +10,7 @@ mod symbol;
 
 use crate::grammar::Grammar;
 use crate::production::Production;
-use crate::symbol::Symbol;
+use crate::symbol::{Symbol, SymbolType};
 
 const START_SYMBOL: &str = "S";
 
@@ -32,7 +31,7 @@ fn main() {
         }
     };
 
-    if let Err(error) = verify(&grammar) {
+    if let Err(error) = grammar.verify() {
         eprintln!("Grammar '{}' is not valid: {}", filename, error);
         process::exit(1);
     }
@@ -43,7 +42,7 @@ fn main() {
 // TODO: Convert to token parser.
 // TODO: Define start symbol in grammar file.
 fn parse(filename: &String) -> Result<Grammar, io::Error> {
-    let mut grammar = Grammar::new(START_SYMBOL.to_owned());
+    let mut grammar = Grammar::new(START_SYMBOL);
 
     let contents = fs::read_to_string(filename)?
         .lines()
@@ -65,11 +64,7 @@ fn parse(filename: &String) -> Result<Grammar, io::Error> {
 
     for production in &productions {
         let mut split = production.splitn(2, "::=");
-
-        let head = Symbol {
-            name: split.next().unwrap().trim().to_owned(),
-            terminal: false,
-        };
+        let head = Symbol::new(split.next().unwrap().trim(), SymbolType::NonTerminal);
 
         let mut body = split
             .next()
@@ -79,9 +74,15 @@ fn parse(filename: &String) -> Result<Grammar, io::Error> {
                 Production::new(
                     case.trim()
                         .split_whitespace()
-                        .map(|name| Symbol {
-                            name: name.to_owned(),
-                            terminal: !nonterminals.contains(name),
+                        .map(|name| {
+                            Symbol::new(
+                                name,
+                                if nonterminals.contains(name) {
+                                    SymbolType::NonTerminal
+                                } else {
+                                    SymbolType::Terminal
+                                },
+                            )
                         })
                         .collect(),
                 )
@@ -96,78 +97,4 @@ fn parse(filename: &String) -> Result<Grammar, io::Error> {
     }
 
     Ok(grammar)
-}
-
-fn verify(grammar: &Grammar) -> Result<(), String> {
-    let mut nonterminals: HashSet<&Symbol> =
-        HashSet::from_iter(grammar.productions.values().flat_map(|value| {
-            value
-                .iter()
-                .flat_map(|production| &production.nonterminals)
-                .collect::<Vec<&Symbol>>()
-        }));
-
-    let start_symbol = Symbol {
-        name: "S".to_owned(),
-        terminal: false,
-    };
-
-    nonterminals.insert(&start_symbol);
-
-    for symbol in grammar.productions.keys() {
-        if !nonterminals.contains(symbol) {
-            return Err(format!("Symbol '{}' is unreachable", symbol));
-        }
-    }
-
-    // TODO: Detect left recursion.
-
-    let mut completeness: HashMap<&Symbol, bool> = grammar
-        .productions
-        .iter()
-        .map(|(symbol, productions)| {
-            (
-                symbol,
-                productions
-                    .iter()
-                    .any(|production| production.symbols.iter().all(|symbol| symbol.terminal)),
-            )
-        })
-        .collect();
-
-    loop {
-        let changes: HashMap<&Symbol, bool> = completeness
-            .iter()
-            .filter(|(_, &complete)| !complete)
-            .map(|(&symbol, _)| {
-                let nonterminals: Vec<&Symbol> = grammar
-                    .productions
-                    .get(symbol)
-                    .unwrap()
-                    .iter()
-                    .flat_map(|production| &production.nonterminals)
-                    .collect();
-
-                (
-                    symbol,
-                    nonterminals
-                        .iter()
-                        .any(|symbol| *completeness.get(symbol).unwrap()),
-                )
-            })
-            .filter(|(_, complete)| *complete)
-            .collect();
-
-        if changes.is_empty() {
-            break;
-        }
-
-        completeness.extend(changes);
-    }
-
-    if let Some((&symbol, _)) = completeness.iter().find(|(_, &complete)| !complete) {
-        return Err(format!("Symbol '{}' is not complete", symbol));
-    }
-
-    Ok(())
 }

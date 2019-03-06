@@ -4,7 +4,14 @@ use std::hash::{Hash, Hasher};
 #[derive(Clone, Debug)]
 pub struct Symbol {
     pub name: String,
-    pub terminal: bool,
+    typ: SymbolType,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum SymbolType {
+    Epsilon,
+    NonTerminal,
+    Terminal,
 }
 
 impl Display for Symbol {
@@ -24,5 +31,22 @@ impl Eq for Symbol {}
 impl Hash for Symbol {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.name.hash(state);
+    }
+}
+
+impl Symbol {
+    pub fn new(name: &str, typ: SymbolType) -> Symbol {
+        Symbol {
+            name: name.to_owned(),
+            typ: typ,
+        }
+    }
+
+    pub fn is_terminal(&self) -> bool {
+        self.typ == SymbolType::Terminal || self.typ == SymbolType::Epsilon
+    }
+
+    pub fn is_epsilon(&self) -> bool {
+        self.typ == SymbolType::Epsilon
     }
 }
