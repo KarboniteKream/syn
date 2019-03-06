@@ -84,4 +84,31 @@ impl Grammar {
 
         Ok(())
     }
+
+    pub fn first(&self, symbol: &Symbol) -> HashSet<Symbol> {
+        let mut result: HashSet<Symbol> = HashSet::new();
+
+        if symbol.is_terminal() {
+            result.insert(symbol.clone());
+            return result;
+        }
+
+        if !self.productions.contains_key(symbol) {
+            return result;
+        }
+
+        for production in self.productions.get(symbol).unwrap() {
+            for sym in &production.symbols {
+                let next: HashSet<Symbol> = self.first(sym);
+                let has_epsilon = next.iter().any(Symbol::is_epsilon);
+                result.extend(next);
+
+                if !has_epsilon {
+                    break;
+                }
+            }
+        }
+
+        return result;
+    }
 }

@@ -36,7 +36,9 @@ fn main() {
         process::exit(1);
     }
 
-    println!("OK!");
+    let symbol = &grammar.start_symbol;
+    let first: HashSet<Symbol> = grammar.first(symbol);
+    println!("FIRST({}) => {:?}", symbol, first);
 }
 
 // TODO: Convert to token parser.
