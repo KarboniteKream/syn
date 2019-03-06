@@ -89,7 +89,7 @@ fn parse(filename: &String) -> Result<Grammar, io::Error> {
             .collect();
 
         grammar
-            .symbols
+            .productions
             .entry(head)
             .or_insert_with(Vec::new)
             .append(&mut body);
@@ -100,7 +100,7 @@ fn parse(filename: &String) -> Result<Grammar, io::Error> {
 
 fn verify(grammar: &Grammar) -> Result<(), String> {
     let mut nonterminals: HashSet<&Symbol> =
-        HashSet::from_iter(grammar.symbols.values().flat_map(|value| {
+        HashSet::from_iter(grammar.productions.values().flat_map(|value| {
             value
                 .iter()
                 .flat_map(|production| &production.nonterminals)
@@ -114,16 +114,16 @@ fn verify(grammar: &Grammar) -> Result<(), String> {
 
     nonterminals.insert(&start_symbol);
 
-    for symbol in grammar.symbols.keys() {
+    for symbol in grammar.productions.keys() {
         if !nonterminals.contains(symbol) {
-            return Err(format!("Symbol '{}' is unreachable", symbol.name));
+            return Err(format!("Symbol '{}' is unreachable", symbol));
         }
     }
 
     // TODO: Detect left recursion.
 
     let mut completeness: HashMap<&Symbol, bool> = grammar
-        .symbols
+        .productions
         .iter()
         .map(|(symbol, productions)| {
             (
@@ -141,7 +141,7 @@ fn verify(grammar: &Grammar) -> Result<(), String> {
             .filter(|(_, &complete)| !complete)
             .map(|(&symbol, _)| {
                 let nonterminals: Vec<&Symbol> = grammar
-                    .symbols
+                    .productions
                     .get(symbol)
                     .unwrap()
                     .iter()

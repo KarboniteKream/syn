@@ -6,7 +6,7 @@ use crate::symbol::Symbol;
 #[derive(Debug)]
 pub struct Grammar {
     pub start_symbol: Symbol,
-    pub symbols: HashMap<Symbol, Vec<Production>>,
+    pub productions: HashMap<Symbol, Vec<Production>>,
 }
 
 impl Grammar {
@@ -14,9 +14,9 @@ impl Grammar {
         Grammar {
             start_symbol: Symbol {
                 name: start_symbol,
-                terminal: true,
+                terminal: false,
             },
-            symbols: HashMap::new(),
+            productions: HashMap::new(),
         }
     }
 }
