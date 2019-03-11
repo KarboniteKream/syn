@@ -1,4 +1,0 @@
-# A is not final.
-
-S ::= a S A b ::| b ::;
-A ::= a A ::;

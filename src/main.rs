@@ -1,18 +1,17 @@
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::env;
 use std::fs;
-use std::io;
 use std::process;
 
+use toml::{self, Value};
+
 mod grammar;
-mod production;
+mod rule;
 mod symbol;
 
 use crate::grammar::Grammar;
-use crate::production::Production;
+use crate::rule::Rule;
 use crate::symbol::{Symbol, SymbolType};
-
-const START_SYMBOL: &str = "S";
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -32,71 +31,92 @@ fn main() {
     };
 
     if let Err(error) = grammar.verify() {
-        eprintln!("Grammar '{}' is not valid: {}", filename, error);
+        eprintln!("Grammar '{}' is not valid: {}", grammar.name, error);
         process::exit(1);
     }
 
     let symbol = &grammar.start_symbol;
     let first: HashSet<Symbol> = grammar.first(symbol);
+
+    println!("{:?}", grammar);
     println!("FIRST({}) => {:?}", symbol, first);
 }
 
-// TODO: Convert to token parser.
-// TODO: Define start symbol in grammar file.
-fn parse(filename: &String) -> Result<Grammar, io::Error> {
-    let mut grammar = Grammar::new(START_SYMBOL);
+fn parse(filename: &String) -> Result<Grammar, String> {
+    let value = match fs::read_to_string(filename) {
+        Ok(contents) => match contents.parse::<Value>() {
+            Ok(value) => value,
+            Err(error) => return Err(error.to_string()),
+        },
+        Err(error) => return Err(error.to_string()),
+    };
 
-    let contents = fs::read_to_string(filename)?
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty() && !line.starts_with("#"))
-        .collect::<Vec<&str>>()
-        .join("");
+    let data: &BTreeMap<String, Value> = match value.as_table() {
+        Some(value) => value,
+        None => return Err(format!("Value {} is not a Table.", value)),
+    };
 
-    let productions: Vec<&str> = contents
-        .split("::;")
-        .map(str::trim)
-        .filter(|line| !line.is_empty())
-        .collect();
+    let name = from_table(&data, "name", &Value::as_str)?.to_owned();
+    let description = from_table(&data, "description", &Value::as_str)
+        .unwrap_or(filename)
+        .to_owned();
+    let start_symbol = Symbol::new(
+        from_table(&data, "start_symbol", &Value::as_str)?.to_owned(),
+        SymbolType::NonTerminal,
+    );
 
-    let nonterminals: HashSet<&str> = productions
-        .iter()
-        .map(|production| production.splitn(2, "::=").next().unwrap().trim())
-        .collect();
+    let mut grammar = Grammar::new(name, description, start_symbol);
+    let rules = from_table(&data, "rules", &Value::as_table)?;
+    let nonterminals: HashSet<&str> = rules.keys().map(|name| name.as_str()).collect();
 
-    for production in &productions {
-        let mut split = production.splitn(2, "::=");
-        let head = Symbol::new(split.next().unwrap().trim(), SymbolType::NonTerminal);
+    for (name, rules) in rules {
+        let symbol = Symbol::new(name.clone(), SymbolType::NonTerminal);
+        let rules = match rules.as_array() {
+            Some(value) => value.clone(),
+            None => vec![rules.clone()],
+        };
 
-        let mut body = split
-            .next()
-            .unwrap()
-            .split("::|")
-            .map(|case| {
-                Production::new(
-                    case.trim()
-                        .split_whitespace()
-                        .map(|name| {
-                            Symbol::new(
-                                name,
-                                if nonterminals.contains(name) {
-                                    SymbolType::NonTerminal
-                                } else {
-                                    SymbolType::Terminal
-                                },
-                            )
-                        })
-                        .collect(),
-                )
-            })
-            .collect();
+        let mut list: Vec<Rule> = Vec::new();
 
-        grammar
-            .productions
-            .entry(head)
-            .or_insert_with(Vec::new)
-            .append(&mut body);
+        for rule in rules {
+            let rule = match rule.as_str() {
+                Some(value) => value,
+                None => return Err(format!("Rule {} is not a String", rule)),
+            };
+
+            let symbols: Vec<Symbol> = if rule.is_empty() {
+                vec![Symbol::new("".to_owned(), SymbolType::Epsilon)]
+            } else {
+                rule.split_whitespace()
+                    .map(|name| {
+                        Symbol::new(
+                            name.to_owned(),
+                            if nonterminals.contains(name) {
+                                SymbolType::NonTerminal
+                            } else {
+                                SymbolType::Terminal
+                            },
+                        )
+                    })
+                    .collect()
+            };
+
+            list.push(Rule::new(symbols));
+        }
+
+        grammar.rules.insert(symbol, list);
     }
 
     Ok(grammar)
+}
+
+fn from_table<'a, T: ?Sized>(
+    data: &'a BTreeMap<String, Value>,
+    key: &str,
+    f: &Fn(&'a Value) -> Option<&T>,
+) -> Result<&'a T, String> {
+    match data.get(key).and_then(f) {
+        Some(value) => Ok(value),
+        None => Err(format!("Unable to parse key '{}'", key)),
+    }
 }

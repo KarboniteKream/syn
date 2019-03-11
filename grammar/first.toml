@@ -1,0 +1,12 @@
+name = "first"
+description = "FIRST(A) = c"
+start_symbol = "S"
+
+[rules]
+S = [
+    "alpha A a beta",
+]
+
+A = [
+    "c gamma",
+]

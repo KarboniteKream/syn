@@ -1,4 +1,0 @@
-# FIRST(A) = c.
-
-S ::= alpha A a beta ::;
-A ::= c gamma ::;

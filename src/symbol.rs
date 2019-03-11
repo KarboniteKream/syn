@@ -35,9 +35,9 @@ impl Hash for Symbol {
 }
 
 impl Symbol {
-    pub fn new(name: &str, typ: SymbolType) -> Symbol {
+    pub fn new(name: String, typ: SymbolType) -> Symbol {
         Symbol {
-            name: name.to_owned(),
+            name: name,
             typ: typ,
         }
     }

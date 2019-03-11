@@ -1,0 +1,13 @@
+name = "completeness"
+description = "Symbol 'A' is not complete"
+start_symbol = "S"
+
+[rules]
+S = [
+    "a S A b",
+    "b",
+]
+
+A = [
+    "a A",
+]

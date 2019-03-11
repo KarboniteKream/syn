@@ -1,0 +1,16 @@
+name = "unreachable"
+description = "Symbol 'B' is unreachable"
+start_symbol = "S"
+
+[rules]
+S = [
+    "a S A b",
+    "b",
+]
+
+A = [
+    "a A",
+    "a",
+]
+
+B = "b"

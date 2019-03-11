@@ -1,5 +1,0 @@
-# B is unreachable.
-
-S ::= a S A b ::| b ::;
-A ::= a A ::| a ::;
-B ::= b ::;

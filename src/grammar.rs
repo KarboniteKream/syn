@@ -1,49 +1,68 @@
 use std::collections::{HashMap, HashSet};
+use std::fmt::{self, Display, Formatter};
 
-use crate::production::Production;
-use crate::symbol::{Symbol, SymbolType};
+use crate::rule::Rule;
+use crate::symbol::Symbol;
 
 #[derive(Debug)]
 pub struct Grammar {
+    pub name: String,
+    pub description: String,
     pub start_symbol: Symbol,
-    pub productions: HashMap<Symbol, Vec<Production>>,
+    pub rules: HashMap<Symbol, Vec<Rule>>,
+}
+
+#[derive(Debug)]
+pub enum GrammarError<'a> {
+    Completeness(&'a Symbol),
+    Unreachable(&'a Symbol),
+}
+
+impl<'a> Display for GrammarError<'a> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            GrammarError::Completeness(symbol) => write!(f, "Symbol '{}' is not complete", symbol),
+            GrammarError::Unreachable(symbol) => write!(f, "Symbol '{}' is unreachable", symbol),
+        }
+    }
 }
 
 impl Grammar {
-    pub fn new(start_symbol: &str) -> Grammar {
+    pub fn new(name: String, description: String, start_symbol: Symbol) -> Grammar {
         Grammar {
-            start_symbol: Symbol::new(start_symbol, SymbolType::NonTerminal),
-            productions: HashMap::new(),
+            name: name,
+            description: description,
+            start_symbol: start_symbol,
+            rules: HashMap::new(),
         }
     }
 
-    pub fn verify(&self) -> Result<(), String> {
+    pub fn verify(&self) -> Result<(), GrammarError> {
         let mut nonterminals: HashSet<&Symbol> = self
-            .productions
+            .rules
             .values()
-            .flat_map(|productions| productions.iter().flat_map(Production::nonterminals))
+            .flat_map(|rules| rules.iter().flat_map(Rule::nonterminals))
             .collect();
 
-        let start_symbol = Symbol::new("S", SymbolType::NonTerminal);
-        nonterminals.insert(&start_symbol);
+        nonterminals.insert(&self.start_symbol);
 
-        for symbol in self.productions.keys() {
+        for symbol in self.rules.keys() {
             if !nonterminals.contains(symbol) {
-                return Err(format!("Symbol '{}' is unreachable", symbol));
+                return Err(GrammarError::Unreachable(symbol));
             }
         }
 
         // TODO: Detect left recursion.
 
         let mut completeness: HashMap<&Symbol, bool> = self
-            .productions
+            .rules
             .iter()
-            .map(|(symbol, productions)| {
+            .map(|(symbol, rules)| {
                 (
                     symbol,
-                    productions
+                    rules
                         .iter()
-                        .any(|production| production.symbols.iter().all(Symbol::is_terminal)),
+                        .any(|rule| rule.symbols.iter().all(Symbol::is_terminal)),
                 )
             })
             .collect();
@@ -54,13 +73,12 @@ impl Grammar {
                 .filter(|(_, &complete)| !complete)
                 .map(|(&symbol, _)| {
                     let nonterminals: HashSet<&Symbol> = self
-                        .productions
+                        .rules
                         .get(symbol)
                         .unwrap()
                         .iter()
-                        .flat_map(Production::nonterminals)
+                        .flat_map(Rule::nonterminals)
                         .collect();
-
                     (
                         symbol,
                         nonterminals
@@ -79,7 +97,7 @@ impl Grammar {
         }
 
         if let Some((&symbol, _)) = completeness.iter().find(|(_, &complete)| !complete) {
-            return Err(format!("Symbol '{}' is not complete", symbol));
+            return Err(GrammarError::Completeness(symbol));
         }
 
         Ok(())
@@ -93,12 +111,12 @@ impl Grammar {
             return result;
         }
 
-        if !self.productions.contains_key(symbol) {
+        if !self.rules.contains_key(symbol) {
             return result;
         }
 
-        for production in self.productions.get(symbol).unwrap() {
-            for sym in &production.symbols {
+        for rule in self.rules.get(symbol).unwrap() {
+            for sym in &rule.symbols {
                 let next: HashSet<Symbol> = self.first(sym);
                 let has_epsilon = next.iter().any(Symbol::is_epsilon);
                 result.extend(next);

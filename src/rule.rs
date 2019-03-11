@@ -3,13 +3,13 @@ use std::collections::HashSet;
 use crate::symbol::Symbol;
 
 #[derive(Debug)]
-pub struct Production {
+pub struct Rule {
     pub symbols: Vec<Symbol>,
 }
 
-impl Production {
-    pub fn new(symbols: Vec<Symbol>) -> Production {
-        Production { symbols: symbols }
+impl Rule {
+    pub fn new(symbols: Vec<Symbol>) -> Rule {
+        Rule { symbols: symbols }
     }
 
     pub fn nonterminals(&self) -> HashSet<&Symbol> {

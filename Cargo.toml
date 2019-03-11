@@ -5,3 +5,4 @@ authors = ["Klemen Košir <klemen.kosir@kream.io>"]
 edition = "2018"
 
 [dependencies]
+toml = "0.4"
