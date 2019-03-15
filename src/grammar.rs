@@ -1,8 +1,11 @@
 use std::collections::{HashMap, HashSet};
-use std::fmt::{self, Display, Formatter};
 
 use crate::rule::Rule;
 use crate::symbol::Symbol;
+
+mod error;
+
+use error::Error;
 
 #[derive(Debug)]
 pub struct Grammar {
@@ -10,21 +13,6 @@ pub struct Grammar {
     pub description: String,
     pub start_symbol: Symbol,
     pub rules: HashMap<Symbol, Vec<Rule>>,
-}
-
-#[derive(Debug)]
-pub enum GrammarError<'a> {
-    Completeness(&'a Symbol),
-    Unreachable(&'a Symbol),
-}
-
-impl<'a> Display for GrammarError<'a> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            GrammarError::Completeness(symbol) => write!(f, "Symbol '{}' is not complete", symbol),
-            GrammarError::Unreachable(symbol) => write!(f, "Symbol '{}' is unreachable", symbol),
-        }
-    }
 }
 
 impl Grammar {
@@ -37,7 +25,7 @@ impl Grammar {
         }
     }
 
-    pub fn verify(&self) -> Result<(), GrammarError> {
+    pub fn verify(&self) -> Result<(), Error> {
         let mut nonterminals: HashSet<&Symbol> = self
             .rules
             .values()
@@ -48,7 +36,7 @@ impl Grammar {
 
         for symbol in self.rules.keys() {
             if !nonterminals.contains(symbol) {
-                return Err(GrammarError::Unreachable(symbol));
+                return Err(Error::Unreachable(symbol));
             }
         }
 
@@ -97,7 +85,7 @@ impl Grammar {
         }
 
         if let Some((&symbol, _)) = completeness.iter().find(|(_, &complete)| !complete) {
-            return Err(GrammarError::Completeness(symbol));
+            return Err(Error::Completeness(symbol));
         }
 
         Ok(())
