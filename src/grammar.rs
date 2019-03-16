@@ -99,7 +99,7 @@ impl Grammar {
         for rule in &self.rules[symbol] {
             for sym in &rule.symbols {
                 let next: HashSet<Symbol> = self.first(sym);
-                let has_epsilon = next.iter().any(Symbol::is_epsilon);
+                let has_epsilon = next.iter().any(|symbol| *symbol == Symbol::Epsilon);
                 result.extend(next);
 
                 if !has_epsilon {

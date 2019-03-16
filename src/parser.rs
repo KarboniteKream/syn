@@ -7,7 +7,7 @@ use toml::Value;
 
 use crate::grammar::Grammar;
 use crate::rule::Rule;
-use crate::symbol::{Symbol, SymbolType};
+use crate::symbol::Symbol;
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -46,17 +46,15 @@ pub fn parse(filename: &str) -> Result<Grammar, ParseError> {
     let description = from_table(&data, "description", &Value::as_str)
         .unwrap_or(filename)
         .to_owned();
-    let start_symbol = Symbol::new(
-        from_table(&data, "start_symbol", &Value::as_str)?.to_owned(),
-        SymbolType::NonTerminal,
-    );
+    let start_symbol =
+        Symbol::NonTerminal(from_table(&data, "start_symbol", &Value::as_str)?.to_owned());
 
     let mut grammar = Grammar::new(name, description, start_symbol);
     let rules = from_table(&data, "rules", &Value::as_table)?;
     let nonterminals: HashSet<&str> = rules.keys().map(|name| name.as_str()).collect();
 
     for (name, rules) in rules {
-        let symbol = Symbol::new(name.clone(), SymbolType::NonTerminal);
+        let symbol = Symbol::NonTerminal(name.clone());
         let rules = match rules.as_array() {
             Some(value) => value.clone(),
             None => vec![rules.clone()],
@@ -71,18 +69,15 @@ pub fn parse(filename: &str) -> Result<Grammar, ParseError> {
             };
 
             let symbols: Vec<Symbol> = if rule.is_empty() {
-                vec![Symbol::new("".to_owned(), SymbolType::Epsilon)]
+                vec![Symbol::Epsilon]
             } else {
                 rule.split_whitespace()
                     .map(|name| {
-                        Symbol::new(
-                            name.to_owned(),
-                            if nonterminals.contains(name) {
-                                SymbolType::NonTerminal
-                            } else {
-                                SymbolType::Terminal
-                            },
-                        )
+                        if nonterminals.contains(name) {
+                            Symbol::NonTerminal(name.to_owned())
+                        } else {
+                            Symbol::Terminal(name.to_owned())
+                        }
                     })
                     .collect()
             };
