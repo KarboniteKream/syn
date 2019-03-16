@@ -1,4 +1,6 @@
 use std::collections::{BTreeMap, HashSet};
+use std::error::Error;
+use std::fmt::{self, Display, Formatter};
 use std::fs;
 
 use toml::Value;
@@ -7,18 +9,37 @@ use crate::grammar::Grammar;
 use crate::rule::Rule;
 use crate::symbol::{Symbol, SymbolType};
 
-pub fn parse(filename: &str) -> Result<Grammar, String> {
+#[derive(Debug)]
+pub enum ParseError {
+    File(String),
+    Key(String),
+    Rule(String),
+}
+
+impl Display for ParseError {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            ParseError::File(error) => write!(f, "Cannot parse file: {}", error),
+            ParseError::Key(name) => write!(f, "Cannot parse key '{}'", name),
+            ParseError::Rule(name) => write!(f, "Cannot parse rule '{}'", name),
+        }
+    }
+}
+
+impl Error for ParseError {}
+
+pub fn parse(filename: &str) -> Result<Grammar, ParseError> {
     let value = match fs::read_to_string(filename) {
         Ok(contents) => match contents.parse::<Value>() {
             Ok(value) => value,
-            Err(error) => return Err(error.to_string()),
+            Err(error) => return Err(ParseError::File(error.to_string())),
         },
-        Err(error) => return Err(error.to_string()),
+        Err(error) => return Err(ParseError::File(error.to_string())),
     };
 
     let data: &BTreeMap<String, Value> = match value.as_table() {
         Some(value) => value,
-        None => return Err(format!("Value {} is not a Table.", value)),
+        None => return Err(ParseError::File("Not a Table".to_owned())),
     };
 
     let name = from_table(&data, "name", &Value::as_str)?.to_owned();
@@ -46,7 +67,7 @@ pub fn parse(filename: &str) -> Result<Grammar, String> {
         for rule in rules {
             let rule = match rule.as_str() {
                 Some(value) => value,
-                None => return Err(format!("Rule {} is not a String", rule)),
+                None => return Err(ParseError::Rule(name.to_owned())),
             };
 
             let symbols: Vec<Symbol> = if rule.is_empty() {
@@ -79,9 +100,9 @@ fn from_table<'a, T: ?Sized>(
     data: &'a BTreeMap<String, Value>,
     key: &str,
     f: &Fn(&'a Value) -> Option<&T>,
-) -> Result<&'a T, String> {
+) -> Result<&'a T, ParseError> {
     match data.get(key).and_then(f) {
         Some(value) => Ok(value),
-        None => Err(format!("Unable to parse key '{}'", key)),
+        None => Err(ParseError::Key(key.to_owned())),
     }
 }
