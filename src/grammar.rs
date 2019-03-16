@@ -18,9 +18,9 @@ pub struct Grammar {
 impl Grammar {
     pub fn new(name: String, description: String, start_symbol: Symbol) -> Grammar {
         Grammar {
-            name: name,
-            description: description,
-            start_symbol: start_symbol,
+            name,
+            description,
+            start_symbol,
             rules: HashMap::new(),
         }
     }
@@ -60,18 +60,13 @@ impl Grammar {
                 .iter()
                 .filter(|(_, &complete)| !complete)
                 .map(|(&symbol, _)| {
-                    let nonterminals: HashSet<&Symbol> = self
-                        .rules
-                        .get(symbol)
-                        .unwrap()
+                    let nonterminals: HashSet<&Symbol> = self.rules[symbol]
                         .iter()
                         .flat_map(Rule::nonterminals)
                         .collect();
                     (
                         symbol,
-                        nonterminals
-                            .iter()
-                            .any(|symbol| *completeness.get(symbol).unwrap()),
+                        nonterminals.iter().any(|symbol| completeness[symbol]),
                     )
                 })
                 .filter(|(_, complete)| *complete)
@@ -103,7 +98,7 @@ impl Grammar {
             return result;
         }
 
-        for rule in self.rules.get(symbol).unwrap() {
+        for rule in &self.rules[symbol] {
             for sym in &rule.symbols {
                 let next: HashSet<Symbol> = self.first(sym);
                 let has_epsilon = next.iter().any(Symbol::is_epsilon);
@@ -115,6 +110,6 @@ impl Grammar {
             }
         }
 
-        return result;
+        result
     }
 }

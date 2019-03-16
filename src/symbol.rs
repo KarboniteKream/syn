@@ -36,10 +36,7 @@ impl Hash for Symbol {
 
 impl Symbol {
     pub fn new(name: String, typ: SymbolType) -> Symbol {
-        Symbol {
-            name: name,
-            typ: typ,
-        }
+        Symbol { name, typ }
     }
 
     pub fn is_terminal(&self) -> bool {

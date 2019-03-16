@@ -9,7 +9,7 @@ pub struct Rule {
 
 impl Rule {
     pub fn new(symbols: Vec<Symbol>) -> Rule {
-        Rule { symbols: symbols }
+        Rule { symbols }
     }
 
     pub fn nonterminals(&self) -> HashSet<&Symbol> {

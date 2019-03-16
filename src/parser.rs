@@ -7,7 +7,7 @@ use crate::grammar::Grammar;
 use crate::rule::Rule;
 use crate::symbol::{Symbol, SymbolType};
 
-pub fn parse(filename: &String) -> Result<Grammar, String> {
+pub fn parse(filename: &str) -> Result<Grammar, String> {
     let value = match fs::read_to_string(filename) {
         Ok(contents) => match contents.parse::<Value>() {
             Ok(value) => value,
