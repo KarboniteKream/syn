@@ -69,7 +69,7 @@ pub fn parse(filename: &str) -> Result<Grammar, ParseError> {
             };
 
             let symbols: Vec<Symbol> = if rule.is_empty() {
-                vec![Symbol::Epsilon]
+                vec![Symbol::Null]
             } else {
                 rule.split_whitespace()
                     .map(|name| {

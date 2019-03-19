@@ -97,15 +97,20 @@ impl Grammar {
         }
 
         for rule in &self.rules[symbol] {
-            for sym in &rule.symbols {
-                let next: HashSet<Symbol> = self.first(sym);
-                let has_epsilon = next.iter().any(|symbol| *symbol == Symbol::Epsilon);
-                result.extend(next);
+            let mut per_rule: HashSet<Symbol> = HashSet::new();
 
-                if !has_epsilon {
+            for sym in &rule.symbols {
+                let per_symbol: HashSet<Symbol> = self.first(sym);
+                let has_null = per_symbol.iter().any(|symbol| *symbol == Symbol::Null);
+                per_rule.extend(per_symbol);
+
+                if !has_null {
+                    per_rule.remove(&Symbol::Null);
                     break;
                 }
             }
+
+            result.extend(per_rule);
         }
 
         result

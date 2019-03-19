@@ -1,5 +1,5 @@
 name = "first"
-description = "FIRST(A) = c"
+description = "FIRST(A) = {b, c, d}"
 start_symbol = "S"
 
 [rules]
@@ -8,5 +8,15 @@ S = [
 ]
 
 A = [
-    "c gamma",
+    "d gamma",
+    "B C",
+]
+
+B = [
+    "b",
+    "",
+]
+
+C = [
+    "c",
 ]
