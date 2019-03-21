@@ -96,21 +96,40 @@ impl Grammar {
             return result;
         }
 
-        for rule in &self.rules[symbol] {
-            let mut per_rule: HashSet<Symbol> = HashSet::new();
+        let mut rules: Vec<(&Rule, usize)> =
+            self.rules[symbol].iter().map(|rule| (rule, 0)).collect();
 
-            for sym in &rule.symbols {
-                let per_symbol: HashSet<Symbol> = self.first(sym);
-                let has_null = per_symbol.iter().any(|symbol| *symbol == Symbol::Null);
-                per_rule.extend(per_symbol);
+        loop {
+            for (rule, idx) in &mut rules {
+                let mut per_rule: HashSet<Symbol> = HashSet::new();
 
-                if !has_null {
-                    per_rule.remove(&Symbol::Null);
-                    break;
+                for sym in &rule.symbols[*idx..] {
+                    *idx += 1;
+
+                    if sym == symbol {
+                        per_rule.remove(&Symbol::Null);
+                        break;
+                    }
+
+                    let per_symbol: HashSet<Symbol> = self.first(sym);
+                    let has_null = per_symbol.iter().any(|symbol| *symbol == Symbol::Null);
+                    per_rule.extend(per_symbol);
+
+                    if !has_null {
+                        per_rule.remove(&Symbol::Null);
+                        break;
+                    }
                 }
+
+                result.extend(per_rule);
             }
 
-            result.extend(per_rule);
+            let all_done = rules.iter().all(|(rule, idx)| rule.symbols.len() == *idx);
+            let has_null = result.iter().any(|symbol| *symbol == Symbol::Null);
+
+            if all_done || !has_null {
+                break;
+            }
         }
 
         result
