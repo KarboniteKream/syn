@@ -3,6 +3,7 @@ use std::env;
 use std::process;
 
 mod grammar;
+mod lr;
 mod parser;
 mod rule;
 mod symbol;
@@ -35,4 +36,17 @@ fn main() {
 
     println!("{:?}", grammar);
     println!("FIRST({}) = {:?}", symbol, first);
+
+    let state = lr::initial_state(&grammar);
+    println!("LR: {}", state);
+
+    let symbol = Symbol::Delimiter;
+    if let Some(state) = lr::next_state(&state, &grammar, &symbol) {
+        println!("  {} → {}", symbol, state);
+
+        let symbol = Symbol::Terminal("a".to_owned());
+        if let Some(state) = lr::next_state(&state, &grammar, &symbol) {
+            println!("    {} → {}", symbol, state);
+        }
+    }
 }

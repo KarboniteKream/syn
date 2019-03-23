@@ -5,7 +5,7 @@ use crate::symbol::Symbol;
 
 #[derive(Clone, Debug)]
 pub struct Rule {
-    head: Symbol,
+    pub head: Symbol,
     pub body: Vec<Symbol>,
 }
 
@@ -17,7 +17,7 @@ impl Rule {
     pub fn nonterminals(&self) -> HashSet<&Symbol> {
         self.body
             .iter()
-            .filter(|symbol| !symbol.is_terminal())
+            .filter(|symbol| symbol.is_nonterminal())
             .collect()
     }
 }

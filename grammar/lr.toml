@@ -1,0 +1,17 @@
+name = "lr"
+start_symbol = "S"
+
+[rules]
+S = [
+    "a A B a",
+]
+
+A = [
+    "a",
+    "A a",
+]
+
+B = [
+    "",
+    "b B",
+]

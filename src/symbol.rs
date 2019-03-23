@@ -5,6 +5,7 @@ pub enum Symbol {
     NonTerminal(String),
     Terminal(String),
     Null,
+    Delimiter,
 }
 
 impl Symbol {
@@ -12,14 +13,19 @@ impl Symbol {
         match self {
             Symbol::NonTerminal(name) | Symbol::Terminal(name) => name.as_str(),
             Symbol::Null => "ϵ",
+            Symbol::Delimiter => "$",
+        }
+    }
+
+    pub fn is_nonterminal(&self) -> bool {
+        match self {
+            Symbol::NonTerminal(_) => true,
+            _ => false,
         }
     }
 
     pub fn is_terminal(&self) -> bool {
-        match self {
-            Symbol::Terminal(_) | Symbol::Null => true,
-            _ => false,
-        }
+        !self.is_nonterminal()
     }
 }
 
@@ -35,6 +41,7 @@ impl Display for Symbol {
                 }
             }
             Symbol::Null => write!(f, "ϵ"),
+            Symbol::Delimiter => write!(f, "$"),
         }
     }
 }

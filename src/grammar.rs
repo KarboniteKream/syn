@@ -145,6 +145,23 @@ impl Grammar {
         result
     }
 
+    pub fn first_sequence(&self, symbols: &[Symbol]) -> HashSet<Symbol> {
+        let mut result: HashSet<Symbol> = HashSet::new();
+
+        for symbol in symbols {
+            let per_symbol = self.first(symbol);
+            let has_null = per_symbol.iter().any(|symbol| *symbol == Symbol::Null);
+            result.extend(per_symbol);
+
+            if !has_null {
+                result.remove(&Symbol::Null);
+                break;
+            }
+        }
+
+        result
+    }
+
     fn cache_first(&self, symbol: &Symbol, first: &HashSet<Symbol>) {
         let mut cache = self.first.borrow_mut();
         cache.insert(symbol.clone(), first.clone());
