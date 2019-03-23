@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::fmt::{self, Display, Formatter};
@@ -11,6 +12,7 @@ pub struct Grammar {
     description: String,
     pub start_symbol: Symbol,
     pub rules: HashMap<Symbol, Vec<Rule>>,
+    first: RefCell<HashMap<Symbol, HashSet<Symbol>>>,
 }
 
 impl Grammar {
@@ -20,6 +22,7 @@ impl Grammar {
             description,
             start_symbol,
             rules: HashMap::new(),
+            first: RefCell::new(HashMap::new()),
         }
     }
 
@@ -82,10 +85,15 @@ impl Grammar {
     }
 
     pub fn first(&self, symbol: &Symbol) -> HashSet<Symbol> {
+        if let Some(result) = self.first.borrow().get(symbol) {
+            return result.clone();
+        }
+
         let mut result: HashSet<Symbol> = HashSet::new();
 
         if symbol.is_terminal() {
             result.insert(symbol.clone());
+            self.cache_first(symbol, &result);
             return result;
         }
 
@@ -95,6 +103,9 @@ impl Grammar {
 
         let mut rules: Vec<(&Rule, usize)> =
             self.rules[symbol].iter().map(|rule| (rule, 0)).collect();
+
+        // Sort rules by type of first symbol to avoid some cycles.
+        rules.sort_unstable_by(|a, b| b.0.body[0].is_terminal().cmp(&a.0.body[0].is_terminal()));
 
         loop {
             for (rule, idx) in &mut rules {
@@ -119,6 +130,7 @@ impl Grammar {
                 }
 
                 result.extend(per_rule);
+                self.cache_first(symbol, &result);
             }
 
             let all_done = rules.iter().all(|(rule, idx)| rule.body.len() == *idx);
@@ -129,7 +141,13 @@ impl Grammar {
             }
         }
 
+        self.cache_first(symbol, &result);
         result
+    }
+
+    fn cache_first(&self, symbol: &Symbol, first: &HashSet<Symbol>) {
+        let mut cache = self.first.borrow_mut();
+        cache.insert(symbol.clone(), first.clone());
     }
 }
 
