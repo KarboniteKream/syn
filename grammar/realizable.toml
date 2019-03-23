@@ -1,5 +1,5 @@
-name = "completeness"
-description = "Symbol 'A' is not complete"
+name = "realizable"
+description = "Symbol 'A' is not realizable"
 start_symbol = "S"
 
 [rules]

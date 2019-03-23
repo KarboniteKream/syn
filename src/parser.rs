@@ -28,7 +28,7 @@ impl Display for ParseError {
 
 impl Error for ParseError {}
 
-pub fn parse(filename: &str) -> Result<Grammar, ParseError> {
+pub fn parse_file(filename: &str) -> Result<Grammar, ParseError> {
     let value = match fs::read_to_string(filename) {
         Ok(contents) => match contents.parse::<Value>() {
             Ok(value) => value,
@@ -68,7 +68,7 @@ pub fn parse(filename: &str) -> Result<Grammar, ParseError> {
                 None => return Err(ParseError::Rule(name.to_owned())),
             };
 
-            let symbols: Vec<Symbol> = if rule.is_empty() {
+            let body = if rule.is_empty() {
                 vec![Symbol::Null]
             } else {
                 rule.split_whitespace()
@@ -82,7 +82,7 @@ pub fn parse(filename: &str) -> Result<Grammar, ParseError> {
                     .collect()
             };
 
-            list.push(Rule::new(symbols));
+            list.push(Rule::new(symbol.clone(), body));
         }
 
         grammar.rules.insert(symbol, list);

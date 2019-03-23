@@ -8,7 +8,7 @@ use crate::symbol::Symbol;
 #[derive(Debug)]
 pub struct Grammar {
     pub name: String,
-    pub description: String,
+    description: String,
     pub start_symbol: Symbol,
     pub rules: HashMap<Symbol, Vec<Rule>>,
 }
@@ -40,7 +40,7 @@ impl Grammar {
 
         // TODO: Detect left recursion.
 
-        let mut completeness: HashMap<&Symbol, bool> = self
+        let mut realizable: HashMap<&Symbol, bool> = self
             .rules
             .iter()
             .map(|(symbol, rules)| {
@@ -48,37 +48,34 @@ impl Grammar {
                     symbol,
                     rules
                         .iter()
-                        .any(|rule| rule.symbols.iter().all(Symbol::is_terminal)),
+                        .any(|rule| rule.body.iter().all(Symbol::is_terminal)),
                 )
             })
             .collect();
 
         loop {
-            let changes: HashMap<&Symbol, bool> = completeness
+            let changes: HashMap<&Symbol, bool> = realizable
                 .iter()
-                .filter(|(_, &complete)| !complete)
+                .filter(|(_, &realizable)| !realizable)
                 .map(|(&symbol, _)| {
                     let nonterminals: HashSet<&Symbol> = self.rules[symbol]
                         .iter()
                         .flat_map(Rule::nonterminals)
                         .collect();
-                    (
-                        symbol,
-                        nonterminals.iter().any(|symbol| completeness[symbol]),
-                    )
+                    (symbol, nonterminals.iter().any(|symbol| realizable[symbol]))
                 })
-                .filter(|(_, complete)| *complete)
+                .filter(|(_, realizable)| *realizable)
                 .collect();
 
             if changes.is_empty() {
                 break;
             }
 
-            completeness.extend(changes);
+            realizable.extend(changes);
         }
 
-        if let Some((&symbol, _)) = completeness.iter().find(|(_, &complete)| !complete) {
-            return Err(GrammarError::Incomplete(symbol.clone()));
+        if let Some((&symbol, _)) = realizable.iter().find(|(_, &realizable)| !realizable) {
+            return Err(GrammarError::NotRealizable(symbol.clone()));
         }
 
         Ok(())
@@ -103,7 +100,7 @@ impl Grammar {
             for (rule, idx) in &mut rules {
                 let mut per_rule: HashSet<Symbol> = HashSet::new();
 
-                for sym in &rule.symbols[*idx..] {
+                for sym in &rule.body[*idx..] {
                     *idx += 1;
 
                     if sym == symbol {
@@ -124,7 +121,7 @@ impl Grammar {
                 result.extend(per_rule);
             }
 
-            let all_done = rules.iter().all(|(rule, idx)| rule.symbols.len() == *idx);
+            let all_done = rules.iter().all(|(rule, idx)| rule.body.len() == *idx);
             let has_null = result.iter().any(|symbol| *symbol == Symbol::Null);
 
             if all_done || !has_null {
@@ -138,15 +135,17 @@ impl Grammar {
 
 #[derive(Debug)]
 pub enum GrammarError {
-    Incomplete(Symbol),
     Unreachable(Symbol),
+    NotRealizable(Symbol),
 }
 
 impl Display for GrammarError {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            GrammarError::Incomplete(symbol) => write!(f, "Symbol '{}' is not complete", symbol),
             GrammarError::Unreachable(symbol) => write!(f, "Symbol '{}' is unreachable", symbol),
+            GrammarError::NotRealizable(symbol) => {
+                write!(f, "Symbol '{}' is not realizable", symbol)
+            }
         }
     }
 }
