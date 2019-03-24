@@ -14,6 +14,7 @@ pub enum ParseError {
     File(String),
     Key(String),
     Rule(String),
+    NoSymbol(String),
 }
 
 impl Display for ParseError {
@@ -21,7 +22,8 @@ impl Display for ParseError {
         match self {
             ParseError::File(error) => write!(f, "Cannot parse file: {}", error),
             ParseError::Key(name) => write!(f, "Cannot parse key '{}'", name),
-            ParseError::Rule(name) => write!(f, "Cannot parse rule '{}'", name),
+            ParseError::Rule(name) => write!(f, "Cannot parse rule {}", name),
+            ParseError::NoSymbol(name) => write!(f, "Symbol {} does not exist", name),
         }
     }
 }
@@ -46,8 +48,11 @@ pub fn parse_file(filename: &str) -> Result<Grammar, ParseError> {
     let description = from_table(&data, "description", &Value::as_str)
         .unwrap_or(filename)
         .to_owned();
-    let start_symbol =
-        Symbol::NonTerminal(from_table(&data, "start_symbol", &Value::as_str)?.to_owned());
+    let start_symbol = Symbol::NonTerminal(
+        from_table(&data, "start_symbol", &Value::as_str)
+            .unwrap_or("S")
+            .to_owned(),
+    );
 
     let mut grammar = Grammar::new(name, description, start_symbol);
     let rules = from_table(&data, "rules", &Value::as_table)?;
@@ -86,6 +91,10 @@ pub fn parse_file(filename: &str) -> Result<Grammar, ParseError> {
         }
 
         grammar.rules.insert(symbol, list);
+    }
+
+    if !grammar.rules.contains_key(&grammar.start_symbol) {
+        return Err(ParseError::NoSymbol(grammar.start_symbol.name().to_owned()));
     }
 
     Ok(grammar)
