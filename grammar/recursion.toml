@@ -1,0 +1,17 @@
+name = "recursion"
+description = "Symbol B is not realizable (left recursion)"
+
+[rules]
+S = [
+    "A",
+]
+
+A = [
+    "a",
+    "B",
+]
+
+B = [
+    "B b",
+    "B c",
+]

@@ -1,5 +1,5 @@
 name = "unreachable"
-description = "Symbol 'B' is unreachable"
+description = "Symbol B is unreachable"
 start_symbol = "S"
 
 [rules]

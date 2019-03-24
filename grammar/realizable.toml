@@ -1,5 +1,5 @@
 name = "realizable"
-description = "Symbol 'A' is not realizable"
+description = "Symbol A is not realizable"
 start_symbol = "S"
 
 [rules]

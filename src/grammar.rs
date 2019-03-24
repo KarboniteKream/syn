@@ -41,7 +41,11 @@ impl Grammar {
             }
         }
 
-        // TODO: Detect left recursion.
+        for (symbol, rules) in &self.rules {
+            if !rules.is_empty() && rules.iter().all(|rule| rule.body[0] == *symbol) {
+                return Err(GrammarError::LeftRecursive(symbol.clone()));
+            }
+        }
 
         let mut realizable: HashMap<&Symbol, bool> = self
             .rules
@@ -171,16 +175,16 @@ impl Grammar {
 #[derive(Debug)]
 pub enum GrammarError {
     Unreachable(Symbol),
+    LeftRecursive(Symbol),
     NotRealizable(Symbol),
 }
 
 impl Display for GrammarError {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            GrammarError::Unreachable(symbol) => write!(f, "Symbol '{}' is unreachable", symbol),
-            GrammarError::NotRealizable(symbol) => {
-                write!(f, "Symbol '{}' is not realizable", symbol)
-            }
+            GrammarError::Unreachable(symbol) => write!(f, "Symbol {} is unreachable", symbol),
+            GrammarError::LeftRecursive(symbol) => write!(f, "Symbol {} is left recursive", symbol),
+            GrammarError::NotRealizable(symbol) => write!(f, "Symbol {} is not realizable", symbol),
         }
     }
 }
