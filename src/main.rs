@@ -34,7 +34,7 @@ fn main() {
     let symbol = &grammar.start_symbol;
     let first: HashSet<Symbol> = grammar.first(symbol);
 
-    println!("{:?}", grammar);
+    println!("{}", grammar);
     println!("FIRST({}) = {:?}", symbol, first);
 
     let state = lr::initial_state(&grammar);
