@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::env;
 use std::process;
 
@@ -7,8 +6,6 @@ mod lr;
 mod parser;
 mod rule;
 mod symbol;
-
-use crate::symbol::Symbol;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -31,22 +28,8 @@ fn main() {
         process::exit(1);
     }
 
-    let symbol = &grammar.start_symbol;
-    let first: HashSet<Symbol> = grammar.first(symbol);
+    println!("Grammar\n{}\n", grammar);
 
-    println!("{}", grammar);
-    println!("FIRST({}) = {:?}", symbol, first);
-
-    let state = lr::initial_state(&grammar);
-    println!("LR: {}", state);
-
-    let symbol = Symbol::Delimiter;
-    if let Some(state) = lr::next_state(&state, &grammar, &symbol) {
-        println!("  {} → {}", symbol, state);
-
-        let symbol = Symbol::Terminal("a".to_owned());
-        if let Some(state) = lr::next_state(&state, &grammar, &symbol) {
-            println!("    {} → {}", symbol, state);
-        }
-    }
+    let automaton = lr::Automaton::new(&grammar);
+    println!("Automaton\n{}", automaton);
 }

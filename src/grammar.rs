@@ -176,19 +176,14 @@ impl Display for Grammar {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let mut rules: Vec<String> = self.rules[&self.start_symbol]
             .iter()
-            .map(|rule| rule.to_string())
+            .map(Rule::to_string)
             .collect();
 
         rules.extend(
             self.rules
                 .iter()
                 .filter(|(symbol, _)| **symbol != self.start_symbol)
-                .flat_map(|(_, rules)| {
-                    rules
-                        .iter()
-                        .map(|rule| rule.to_string())
-                        .collect::<Vec<String>>()
-                })
+                .flat_map(|(_, rules)| rules.iter().map(Rule::to_string).collect::<Vec<String>>())
                 .collect::<Vec<String>>(),
         );
 

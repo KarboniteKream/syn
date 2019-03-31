@@ -3,7 +3,7 @@ use std::fmt::{self, Display, Formatter};
 use crate::rule::Rule;
 use crate::symbol::Symbol;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Item {
     rule: Rule,
     idx: usize,
@@ -36,12 +36,7 @@ impl Item {
 
 impl Display for Item {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let mut body: Vec<String> = self
-            .rule
-            .body
-            .iter()
-            .map(|symbol| symbol.to_string())
-            .collect();
+        let mut body: Vec<String> = self.rule.body.iter().map(Symbol::to_string).collect();
 
         let pointer = "·".to_owned();
         if let Some(symbol) = body.get_mut(self.idx) {

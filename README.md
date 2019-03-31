@@ -9,7 +9,7 @@ cargo run grammar/<grammar>.toml
 ```
 
 ## Grammar
-Grammar files are defined using the TOML format.
+Grammar files are defined using the [TOML](https://github.com/toml-lang/toml) format.
 
 ### Header
 The header contains the following entries:

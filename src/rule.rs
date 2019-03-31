@@ -3,7 +3,7 @@ use std::fmt::{self, Display, Formatter};
 
 use crate::symbol::Symbol;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Eq, Hash, Debug, PartialEq)]
 pub struct Rule {
     pub head: Symbol,
     pub body: Vec<Symbol>,
@@ -27,7 +27,7 @@ impl Display for Rule {
         let body = self
             .body
             .iter()
-            .map(|symbol| symbol.to_string())
+            .map(Symbol::to_string)
             .collect::<Vec<String>>()
             .join(" ");
 
