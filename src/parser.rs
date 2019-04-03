@@ -9,27 +9,6 @@ use crate::grammar::Grammar;
 use crate::rule::Rule;
 use crate::symbol::Symbol;
 
-#[derive(Debug)]
-pub enum ParseError {
-    File(String),
-    Key(String),
-    Rule(String),
-    NoSymbol(String),
-}
-
-impl Display for ParseError {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            ParseError::File(error) => write!(f, "Cannot parse file: {}", error),
-            ParseError::Key(name) => write!(f, "Cannot parse key '{}'", name),
-            ParseError::Rule(name) => write!(f, "Cannot parse rule {}", name),
-            ParseError::NoSymbol(name) => write!(f, "Symbol {} does not exist", name),
-        }
-    }
-}
-
-impl Error for ParseError {}
-
 pub fn parse_file(filename: &str) -> Result<Grammar, ParseError> {
     let value = match fs::read_to_string(filename) {
         Ok(contents) => match contents.parse::<Value>() {
@@ -96,11 +75,7 @@ pub fn parse_file(filename: &str) -> Result<Grammar, ParseError> {
             list.push(Rule::new(symbol.clone(), body));
         }
 
-        grammar.rules.insert(symbol, list);
-    }
-
-    if !grammar.rules.contains_key(&grammar.start_symbol) {
-        return Err(ParseError::NoSymbol(grammar.start_symbol.name().to_owned()));
+        grammar.add_rules(&symbol, &list);
     }
 
     Ok(grammar)
@@ -116,3 +91,22 @@ fn from_table<'a, T: ?Sized>(
         None => Err(ParseError::Key(key.to_owned())),
     }
 }
+
+#[derive(Debug)]
+pub enum ParseError {
+    File(String),
+    Key(String),
+    Rule(String),
+}
+
+impl Display for ParseError {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            ParseError::File(error) => write!(f, "Cannot parse file: {}", error),
+            ParseError::Key(name) => write!(f, "Cannot parse key '{}'", name),
+            ParseError::Rule(name) => write!(f, "Cannot parse rule {}", name),
+        }
+    }
+}
+
+impl Error for ParseError {}

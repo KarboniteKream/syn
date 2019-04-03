@@ -14,6 +14,10 @@ impl Rule {
         Rule { head, body }
     }
 
+    pub fn first(&self) -> &Symbol {
+        &self.body[0]
+    }
+
     pub fn nonterminals(&self) -> HashSet<&Symbol> {
         self.body
             .iter()

@@ -11,6 +11,7 @@ pub struct Grammar {
     pub name: String,
     description: String,
     pub start_symbol: Symbol,
+    all_rules: Vec<Rule>,
     pub rules: HashMap<Symbol, Vec<Rule>>,
     first: RefCell<HashMap<Symbol, Vec<Symbol>>>,
 }
@@ -21,17 +22,24 @@ impl Grammar {
             name,
             description,
             start_symbol,
+            all_rules: Vec::new(),
             rules: HashMap::new(),
             first: RefCell::new(HashMap::new()),
         }
     }
 
+    pub fn add_rules(&mut self, symbol: &Symbol, rules: &[Rule]) {
+        self.all_rules.extend(rules.to_vec());
+        self.rules.insert(symbol.clone(), rules.to_vec());
+    }
+
     pub fn verify(&self) -> Result<(), GrammarError> {
-        let mut nonterminals: HashSet<&Symbol> = self
-            .rules
-            .values()
-            .flat_map(|rules| rules.iter().flat_map(Rule::nonterminals))
-            .collect();
+        if !self.rules.contains_key(&self.start_symbol) {
+            return Err(GrammarError::NoSymbol(self.start_symbol.clone()));
+        }
+
+        let mut nonterminals: HashSet<&Symbol> =
+            self.all_rules.iter().flat_map(Rule::nonterminals).collect();
 
         nonterminals.insert(&self.start_symbol);
 
@@ -42,47 +50,41 @@ impl Grammar {
         }
 
         for (symbol, rules) in &self.rules {
-            if !rules.is_empty() && rules.iter().all(|rule| rule.body[0] == *symbol) {
+            if !rules.is_empty() && rules.iter().all(|rule| rule.first() == symbol) {
                 return Err(GrammarError::LeftRecursive(symbol.clone()));
             }
         }
 
-        let mut realizable: HashMap<&Symbol, bool> = self
-            .rules
-            .iter()
-            .map(|(symbol, rules)| {
-                (
-                    symbol,
-                    rules
-                        .iter()
-                        .any(|rule| rule.body.iter().all(Symbol::is_terminal)),
-                )
-            })
-            .collect();
+        for rule in &self.all_rules {
+            if rule.body.iter().all(Symbol::is_terminal) {
+                nonterminals.remove(&rule.head);
+            }
+        }
 
         loop {
-            let changes: HashMap<&Symbol, bool> = realizable
+            let realizable: HashSet<&Symbol> = nonterminals
                 .iter()
-                .filter(|(_, &realizable)| !realizable)
-                .map(|(&symbol, _)| {
-                    let nonterminals: HashSet<&Symbol> = self.rules[symbol]
+                .filter(|symbol| {
+                    self.rules[symbol]
                         .iter()
-                        .flat_map(Rule::nonterminals)
-                        .collect();
-                    (symbol, nonterminals.iter().any(|symbol| realizable[symbol]))
+                        .any(|rule| rule.nonterminals().is_disjoint(&nonterminals))
                 })
-                .filter(|(_, realizable)| *realizable)
+                .cloned()
                 .collect();
 
-            if changes.is_empty() {
+            if realizable.is_empty() {
                 break;
             }
 
-            realizable.extend(changes);
+            for symbol in realizable {
+                nonterminals.remove(symbol);
+            }
         }
 
-        if let Some((&symbol, _)) = realizable.iter().find(|(_, &realizable)| !realizable) {
-            return Err(GrammarError::NotRealizable(symbol.clone()));
+        if !nonterminals.is_empty() {
+            let mut not_realizable: Vec<&Symbol> = nonterminals.into_iter().collect();
+            not_realizable.sort_unstable();
+            return Err(GrammarError::NotRealizable(not_realizable[0].clone()));
         }
 
         Ok(())
@@ -179,18 +181,11 @@ impl Grammar {
 
 impl Display for Grammar {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let mut rules: Vec<String> = self.rules[&self.start_symbol]
+        let rules = self
+            .all_rules
             .iter()
             .map(Rule::to_string)
-            .collect();
-
-        rules.extend(
-            self.rules
-                .iter()
-                .filter(|(symbol, _)| **symbol != self.start_symbol)
-                .flat_map(|(_, rules)| rules.iter().map(Rule::to_string).collect::<Vec<String>>())
-                .collect::<Vec<String>>(),
-        );
+            .collect::<Vec<String>>();
 
         write!(
             f,
@@ -204,6 +199,7 @@ impl Display for Grammar {
 
 #[derive(Debug)]
 pub enum GrammarError {
+    NoSymbol(Symbol),
     Unreachable(Symbol),
     LeftRecursive(Symbol),
     NotRealizable(Symbol),
@@ -212,6 +208,7 @@ pub enum GrammarError {
 impl Display for GrammarError {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
+            GrammarError::NoSymbol(symbol) => write!(f, "Symbol {} does not exist", symbol),
             GrammarError::Unreachable(symbol) => write!(f, "Symbol {} is unreachable", symbol),
             GrammarError::LeftRecursive(symbol) => write!(f, "Symbol {} is left recursive", symbol),
             GrammarError::NotRealizable(symbol) => write!(f, "Symbol {} is not realizable", symbol),
