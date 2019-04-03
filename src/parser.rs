@@ -1,9 +1,9 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::HashSet;
 use std::error::Error;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
 
-use toml::Value;
+use toml::{map::Map, Value};
 
 use crate::grammar::Grammar;
 use crate::rule::Rule;
@@ -39,7 +39,7 @@ pub fn parse_file(filename: &str) -> Result<Grammar, ParseError> {
         Err(error) => return Err(ParseError::File(error.to_string())),
     };
 
-    let data: &BTreeMap<String, Value> = match value.as_table() {
+    let data: &Map<String, Value> = match value.as_table() {
         Some(value) => value,
         None => return Err(ParseError::File("Not a Table".to_owned())),
     };
@@ -48,14 +48,20 @@ pub fn parse_file(filename: &str) -> Result<Grammar, ParseError> {
     let description = from_table(&data, "description", &Value::as_str)
         .unwrap_or(filename)
         .to_owned();
+
+    let rules = from_table(&data, "rules", &Value::as_table)?;
+
+    if rules.is_empty() {
+        return Err(ParseError::File("No rules defined".to_owned()));
+    }
+
     let start_symbol = Symbol::NonTerminal(
         from_table(&data, "start_symbol", &Value::as_str)
-            .unwrap_or("S")
+            .unwrap_or_else(|_| rules.keys().next().unwrap())
             .to_owned(),
     );
 
     let mut grammar = Grammar::new(name, description, start_symbol);
-    let rules = from_table(&data, "rules", &Value::as_table)?;
     let nonterminals: HashSet<&str> = rules.keys().map(|name| name.as_str()).collect();
 
     for (name, rules) in rules {
@@ -101,7 +107,7 @@ pub fn parse_file(filename: &str) -> Result<Grammar, ParseError> {
 }
 
 fn from_table<'a, T: ?Sized>(
-    data: &'a BTreeMap<String, Value>,
+    data: &'a Map<String, Value>,
     key: &str,
     f: &Fn(&'a Value) -> Option<&T>,
 ) -> Result<&'a T, ParseError> {

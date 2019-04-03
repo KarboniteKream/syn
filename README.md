@@ -15,8 +15,8 @@ Grammar files are defined using the [TOML](https://github.com/toml-lang/toml) fo
 The header contains the following entries:
 
 - `name`: Name of the grammar.
-- `description`: An optional description of the grammar. Defaults to the filename.
-- `start_symbol`: Start symbol of the grammar. Defaults to `"S"`.
+- `description`: An optional description of the grammar. Defaults to the grammar file name.
+- `start_symbol`: Start symbol of the grammar. Defaults to first rule in `[rules]`.
 
 Example:
 ```toml
