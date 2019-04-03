@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 use std::fmt::{self, Display, Formatter};
 
 use super::item::Item;
@@ -29,7 +29,7 @@ impl State {
         State::new(vec![Item::new(rule, Symbol::Null)])
     }
 
-    pub fn transitions(&self) -> HashSet<&Symbol> {
+    pub fn transitions(&self) -> Vec<&Symbol> {
         self.items
             .iter()
             .filter_map(Item::head)
@@ -38,7 +38,7 @@ impl State {
     }
 
     pub fn derive(&self, grammar: &Grammar, symbol: &Symbol) -> Option<State> {
-        let items: Vec<Item> = self
+        let mut items: Vec<Item> = self
             .items
             .iter()
             .filter(|item| match item.head() {
@@ -52,39 +52,41 @@ impl State {
             return None;
         }
 
-        let mut next_state: State = State::new(items);
-        for item in &mut next_state.items {
-            item.consume();
+        let mut buffer: HashSet<Item> = items.iter().cloned().collect();
+        let mut queue = VecDeque::new();
+
+        for item in &mut items {
+            item.pass();
+
+            if item.is_nonterminal() {
+                queue.push_back(item.clone());
+            }
         }
 
-        let new_items: Vec<Item> = next_state
-            .items
-            .iter()
-            .filter(|item| match item.head() {
-                Some(head) => head.is_nonterminal(),
-                None => false,
-            })
-            .flat_map(|item| {
-                let head: &Symbol = item.head().unwrap();
-                let tail_first: HashSet<Symbol> = grammar.first_sequence(&item.tail());
+        while let Some(item) = queue.pop_front() {
+            let head: &Symbol = item.head().unwrap();
+            let first: Vec<Symbol> = grammar.first_sequence(&item.tail());
 
-                grammar.rules[head]
-                    .iter()
-                    .flat_map(|rule| {
-                        tail_first
-                            .iter()
-                            .map(|first| {
-                                let rule = Rule::new(head.clone(), rule.body.clone());
-                                Item::new(rule, first.clone())
-                            })
-                            .collect::<Vec<Item>>()
-                    })
-                    .collect::<Vec<Item>>()
-            })
-            .collect();
+            for rule in &grammar.rules[head] {
+                for sym in &first {
+                    let rule = Rule::new(head.clone(), rule.body.clone());
+                    let item = Item::new(rule, sym.clone());
 
-        next_state.items.extend(new_items);
-        Some(next_state)
+                    if buffer.contains(&item) {
+                        continue;
+                    }
+
+                    if item.is_nonterminal() {
+                        queue.push_back(item.clone());
+                    }
+
+                    buffer.insert(item.clone());
+                    items.push(item);
+                }
+            }
+        }
+
+        Some(State::new(items))
     }
 }
 

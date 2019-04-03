@@ -12,7 +12,7 @@ pub struct Grammar {
     description: String,
     pub start_symbol: Symbol,
     pub rules: HashMap<Symbol, Vec<Rule>>,
-    first: RefCell<HashMap<Symbol, HashSet<Symbol>>>,
+    first: RefCell<HashMap<Symbol, Vec<Symbol>>>,
 }
 
 impl Grammar {
@@ -88,21 +88,20 @@ impl Grammar {
         Ok(())
     }
 
-    pub fn first(&self, symbol: &Symbol) -> HashSet<Symbol> {
-        if let Some(result) = self.first.borrow().get(symbol) {
-            return result.clone();
+    pub fn first(&self, symbol: &Symbol) -> Vec<Symbol> {
+        if let Some(first) = self.first.borrow().get(symbol) {
+            return first.clone();
         }
 
-        let mut result: HashSet<Symbol> = HashSet::new();
+        let mut buffer = HashSet::new();
 
         if symbol.is_terminal() {
-            result.insert(symbol.clone());
-            self.cache_first(symbol, &result);
-            return result;
+            buffer.insert(symbol.clone());
+            return self.cache_first(symbol, &buffer);
         }
 
         if !self.rules.contains_key(symbol) {
-            return result;
+            return Vec::new();
         }
 
         let mut rules: Vec<(&Rule, usize)> =
@@ -113,62 +112,68 @@ impl Grammar {
 
         loop {
             for (rule, idx) in &mut rules {
-                let mut per_rule: HashSet<Symbol> = HashSet::new();
+                let mut rule_buffer = HashSet::new();
 
                 for sym in &rule.body[*idx..] {
                     *idx += 1;
 
                     if sym == symbol {
-                        per_rule.remove(&Symbol::Null);
+                        rule_buffer.remove(&Symbol::Null);
                         break;
                     }
 
-                    let per_symbol: HashSet<Symbol> = self.first(sym);
-                    let has_null = per_symbol.iter().any(|symbol| *symbol == Symbol::Null);
-                    per_rule.extend(per_symbol);
+                    let first: Vec<Symbol> = self.first(sym);
+                    let has_null = first.iter().any(|symbol| *symbol == Symbol::Null);
+                    rule_buffer.extend(first);
 
                     if !has_null {
-                        per_rule.remove(&Symbol::Null);
+                        rule_buffer.remove(&Symbol::Null);
                         break;
                     }
                 }
 
-                result.extend(per_rule);
-                self.cache_first(symbol, &result);
+                buffer.extend(rule_buffer);
+                self.cache_first(symbol, &buffer);
             }
 
             let all_done = rules.iter().all(|(rule, idx)| rule.body.len() == *idx);
-            let has_null = result.iter().any(|symbol| *symbol == Symbol::Null);
+            let has_null = buffer.iter().any(|symbol| *symbol == Symbol::Null);
 
             if all_done || !has_null {
                 break;
             }
         }
 
-        self.cache_first(symbol, &result);
-        result
+        self.cache_first(symbol, &buffer)
     }
 
-    pub fn first_sequence(&self, symbols: &[Symbol]) -> HashSet<Symbol> {
-        let mut result: HashSet<Symbol> = HashSet::new();
+    pub fn first_sequence(&self, symbols: &[Symbol]) -> Vec<Symbol> {
+        let mut buffer = HashSet::new();
 
         for symbol in symbols {
             let per_symbol = self.first(symbol);
             let has_null = per_symbol.iter().any(|symbol| *symbol == Symbol::Null);
-            result.extend(per_symbol);
+            buffer.extend(per_symbol);
 
             if !has_null {
-                result.remove(&Symbol::Null);
+                buffer.remove(&Symbol::Null);
                 break;
             }
         }
 
-        result
+        let mut first: Vec<Symbol> = buffer.into_iter().collect();
+        first.sort_unstable();
+        first
     }
 
-    fn cache_first(&self, symbol: &Symbol, first: &HashSet<Symbol>) {
+    fn cache_first(&self, symbol: &Symbol, buffer: &HashSet<Symbol>) -> Vec<Symbol> {
+        let mut first: Vec<Symbol> = buffer.iter().cloned().collect();
+        first.sort_unstable();
+
         let mut cache = self.first.borrow_mut();
         cache.insert(symbol.clone(), first.clone());
+
+        first
     }
 }
 

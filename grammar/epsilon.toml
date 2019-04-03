@@ -1,0 +1,6 @@
+name = "epsilon"
+
+[rules]
+S = "A b"
+A = "a B"
+B = ""

@@ -7,15 +7,15 @@ use crate::symbol::Symbol;
 pub struct Item {
     rule: Rule,
     idx: usize,
-    follow: Symbol,
+    follower: Symbol,
 }
 
 impl Item {
-    pub fn new(rule: Rule, follow: Symbol) -> Item {
+    pub fn new(rule: Rule, follower: Symbol) -> Item {
         Item {
             rule,
             idx: 0,
-            follow,
+            follower,
         }
     }
 
@@ -24,13 +24,20 @@ impl Item {
     }
 
     pub fn tail(&self) -> Vec<Symbol> {
-        let mut result: Vec<Symbol> = self.rule.body[self.idx + 1..].to_vec();
-        result.push(self.follow.clone());
-        result
+        let mut tail: Vec<Symbol> = self.rule.body[self.idx + 1..].to_vec();
+        tail.push(self.follower.clone());
+        tail
     }
 
-    pub fn consume(&mut self) {
+    pub fn pass(&mut self) {
         self.idx += 1;
+    }
+
+    pub fn is_nonterminal(&self) -> bool {
+        match self.head() {
+            Some(head) => head.is_nonterminal(),
+            None => false,
+        }
     }
 }
 
@@ -50,7 +57,7 @@ impl Display for Item {
             "{} → {}, {}",
             self.rule.head,
             body.join(" "),
-            self.follow
+            self.follower
         )
     }
 }
