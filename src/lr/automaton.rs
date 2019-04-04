@@ -18,10 +18,6 @@ impl Automaton {
         states.push(initial_state.clone());
         enqueue(&mut queue, &initial_state);
 
-        for transition in initial_state.transitions() {
-            queue.push_back((initial_state.clone(), transition.clone()));
-        }
-
         while let Some((state, transition)) = queue.pop_front() {
             let next_state = state.derive(&grammar, &transition).unwrap();
 
