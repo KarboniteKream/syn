@@ -109,9 +109,6 @@ impl Grammar {
         let mut rules: Vec<(&Rule, usize)> =
             self.rules[symbol].iter().map(|rule| (rule, 0)).collect();
 
-        // Sort rules by type of first symbol to avoid some cycles.
-        rules.sort_unstable_by(|a, b| b.0.body[0].is_terminal().cmp(&a.0.body[0].is_terminal()));
-
         loop {
             for (rule, idx) in &mut rules {
                 let mut rule_buffer = HashSet::new();
