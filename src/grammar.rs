@@ -6,7 +6,7 @@ use std::fmt::{self, Display, Formatter};
 use crate::rule::Rule;
 use crate::symbol::Symbol;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Grammar {
     pub name: String,
     description: String,

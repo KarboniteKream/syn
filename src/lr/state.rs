@@ -1,19 +1,21 @@
 use std::collections::{HashSet, VecDeque};
 use std::fmt::{self, Display, Formatter};
+use std::hash::{Hash, Hasher};
 
 use super::item::Item;
 use crate::grammar::Grammar;
 use crate::rule::Rule;
 use crate::symbol::Symbol;
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct State {
+    pub id: usize,
     pub items: Vec<Item>,
 }
 
 impl State {
-    pub fn new(items: Vec<Item>) -> State {
-        State { items }
+    pub fn new(id: usize, items: Vec<Item>) -> State {
+        State { id, items }
     }
 
     pub fn initial(grammar: &Grammar) -> State {
@@ -26,7 +28,7 @@ impl State {
             ],
         );
 
-        State::new(vec![Item::new(rule, Symbol::Null)])
+        State::new(0, vec![Item::new(rule, Symbol::Null)])
     }
 
     pub fn transitions(&self) -> Vec<&Symbol> {
@@ -87,7 +89,21 @@ impl State {
             }
         }
 
-        Some(State::new(items))
+        Some(State::new(0, items))
+    }
+}
+
+impl PartialEq for State {
+    fn eq(&self, other: &State) -> bool {
+        self.items == other.items
+    }
+}
+
+impl Eq for State {}
+
+impl Hash for State {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.items.hash(state);
     }
 }
 
