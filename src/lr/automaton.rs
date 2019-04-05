@@ -11,15 +11,15 @@ pub struct Automaton {
 
 impl Automaton {
     pub fn new(grammar: &Grammar) -> Automaton {
-        let mut states: Vec<State> = Vec::new();
+        let mut states = Vec::new();
         let mut queue: VecDeque<(State, Symbol)> = VecDeque::new();
 
         let initial_state = State::initial(grammar);
         states.push(initial_state.clone());
         enqueue(&mut queue, &initial_state);
 
-        while let Some((state, transition)) = queue.pop_front() {
-            let next_state = state.derive(&grammar, &transition).unwrap();
+        while let Some((state, symbol)) = queue.pop_front() {
+            let next_state = state.derive(&grammar, &symbol).unwrap();
 
             if !states.contains(&next_state) {
                 states.push(next_state.clone());

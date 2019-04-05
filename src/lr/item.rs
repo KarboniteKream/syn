@@ -44,8 +44,8 @@ impl Item {
 impl Display for Item {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let mut body: Vec<String> = self.rule.body.iter().map(Symbol::to_string).collect();
+        let pointer = String::from("·");
 
-        let pointer = "·".to_owned();
         if let Some(symbol) = body.get_mut(self.idx) {
             *symbol = pointer + symbol;
         } else {

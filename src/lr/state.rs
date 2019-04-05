@@ -52,11 +52,12 @@ impl State {
             return None;
         }
 
-        let mut buffer: HashSet<Item> = items.iter().cloned().collect();
+        let mut buffer = HashSet::new();
         let mut queue = VecDeque::new();
 
         for item in &mut items {
             item.pass();
+            buffer.insert(item.clone());
 
             if item.is_nonterminal() {
                 queue.push_back(item.clone());
