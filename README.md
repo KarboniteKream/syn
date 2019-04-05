@@ -5,8 +5,10 @@
 
 ## Usage
 ```bash
-cargo run grammar/<grammar>.toml
+cargo run grammar/<grammar>.toml [output.dot]
 ```
+
+The second command-line argument is optional and specifies the desired output file for the graph in the [DOT](https://www.graphviz.org/doc/info/lang.html) language.
 
 ## Grammar
 Grammar files are defined using the [TOML](https://github.com/toml-lang/toml) format.

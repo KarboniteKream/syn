@@ -1,4 +1,5 @@
 use std::env;
+use std::fs;
 use std::path::Path;
 
 use std::process;
@@ -34,4 +35,13 @@ fn main() {
 
     let automaton = lr::Automaton::new(&grammar);
     println!("Automaton\n{}", automaton);
+
+    if let Some(output) = args.get(2).map(Path::new) {
+        let contents: String = automaton.to_dot();
+
+        if let Err(error) = fs::write(output, contents) {
+            eprintln!("Unable to save to file '{}': {}", output.display(), error);
+            process::exit(1);
+        }
+    }
 }

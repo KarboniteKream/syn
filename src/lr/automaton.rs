@@ -9,6 +9,7 @@ use crate::symbol::Symbol;
 type Transition = (usize, usize, Symbol);
 
 pub struct Automaton {
+    grammar: Grammar,
     states: Vec<State>,
     transitions: Vec<Transition>,
 }
@@ -42,9 +43,50 @@ impl Automaton {
         transitions.sort_unstable();
 
         Automaton {
+            grammar,
             states,
             transitions,
         }
+    }
+
+    pub fn to_dot(&self) -> String {
+        let nodes = self
+            .states
+            .iter()
+            .map(|state| {
+                let items = state
+                    .items
+                    .iter()
+                    .map(|item| item.to_string().replace("\"", "\\\""))
+                    .collect::<Vec<String>>()
+                    .join("\\n");
+
+                format!(
+                    "    {0} [label=\"{0}|{1}\", shape=record];",
+                    state.id, items
+                )
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        let edges = self
+            .transitions
+            .iter()
+            .map(|(left, right, symbol)| {
+                format!(
+                    "    {} -> {} [label=\"{}\"];",
+                    left,
+                    right,
+                    symbol.to_string().replace("\"", "\\\"")
+                )
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        format!(
+            "digraph {0} {{\n    label=\"{0}\";\n    rankdir=LR;\n\n{1}\n\n{2}\n}}",
+            self.grammar.name, nodes, edges
+        )
     }
 }
 
