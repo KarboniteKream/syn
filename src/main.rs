@@ -1,4 +1,6 @@
 use std::env;
+use std::path::Path;
+
 use std::process;
 
 mod grammar;
@@ -10,15 +12,15 @@ mod symbol;
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
-        eprintln!("Please specify a filename.");
+        eprintln!("Please specify a grammar file name");
         process::exit(1);
     }
 
-    let filename = &args[1];
+    let filename = Path::new(&args[1]);
     let grammar = match parser::parse_file(filename) {
         Ok(grammar) => grammar,
         Err(error) => {
-            eprintln!("Unable to parse file '{}': {}", filename, error);
+            eprintln!("Unable to parse file '{}': {}", filename.display(), error);
             process::exit(1);
         }
     };

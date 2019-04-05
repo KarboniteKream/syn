@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::error::Error;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
+use std::path::Path;
 
 use toml::{map::Map, Value};
 
@@ -9,7 +10,7 @@ use crate::grammar::Grammar;
 use crate::rule::Rule;
 use crate::symbol::Symbol;
 
-pub fn parse_file(filename: &str) -> Result<Grammar, ParseError> {
+pub fn parse_file(filename: &Path) -> Result<Grammar, ParseError> {
     let value = match fs::read_to_string(filename) {
         Ok(contents) => match contents.parse::<Value>() {
             Ok(value) => value,
@@ -25,8 +26,11 @@ pub fn parse_file(filename: &str) -> Result<Grammar, ParseError> {
 
     let name = from_table(&data, "name", &Value::as_str)?.to_owned();
     let description = from_table(&data, "description", &Value::as_str)
-        .unwrap_or(filename)
-        .to_owned();
+        .map(&str::to_owned)
+        .unwrap_or_else(|_| {
+            let path = filename.canonicalize().unwrap();
+            path.into_os_string().into_string().unwrap()
+        });
 
     let rules = from_table(&data, "rules", &Value::as_table)?;
 
