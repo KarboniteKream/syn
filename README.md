@@ -38,18 +38,18 @@ To represent an `ϵ` production, use an empty string. The symbols and rules can 
 Example:
 ```toml
 [rules]
-# S → A B c | a A B b
+# S → A B 'c' | 'a' A B 'b'
 S = [
     "A B c",
     "a A B b",
 ]
 
-# A → a | ϵ
+# A → 'a' | ϵ
 A = [
     "a",
     "",
 ]
 
-# B → b
+# B → 'b'
 B = "b"
 ```

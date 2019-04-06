@@ -32,11 +32,16 @@ impl State {
     }
 
     pub fn transitions(&self) -> Vec<&Symbol> {
-        self.items
+        let transitions: HashSet<&Symbol> = self
+            .items
             .iter()
             .filter_map(Item::head)
             .filter(|symbol| **symbol != Symbol::Null)
-            .collect()
+            .collect();
+
+        let mut transitions: Vec<&Symbol> = transitions.into_iter().collect();
+        transitions.sort_unstable();
+        transitions
     }
 
     pub fn derive(&self, grammar: &Grammar, symbol: &Symbol) -> Option<State> {
