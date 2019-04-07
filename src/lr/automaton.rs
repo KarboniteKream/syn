@@ -111,8 +111,14 @@ impl Automaton {
             .iter()
             .map(|ItemTransition { from, to, symbol }| {
                 let color = match symbol {
-                    Symbol::Null => "red",
-                    _ => "blue",
+                    Symbol::Null => {
+                        if from.1 < to.1 {
+                            "crimson"
+                        } else {
+                            "forestgreen"
+                        }
+                    }
+                    _ => "royalblue",
                 };
 
                 format!(
