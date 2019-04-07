@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::fmt::{self, Display, Formatter};
 
 use crate::symbol::Symbol;
+use crate::util;
 
 #[derive(Clone, Eq, Hash, Debug, PartialEq)]
 pub struct Rule {
@@ -28,13 +29,7 @@ impl Rule {
 
 impl Display for Rule {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let body = self
-            .body
-            .iter()
-            .map(Symbol::to_string)
-            .collect::<Vec<String>>()
-            .join(" ");
-
+        let body = util::to_string(self.body.iter(), " ");
         write!(f, "{} → {}", self.head, body)
     }
 }

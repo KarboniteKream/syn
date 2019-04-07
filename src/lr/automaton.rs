@@ -1,51 +1,75 @@
-use std::cmp;
 use std::collections::{HashSet, VecDeque};
 use std::fmt::{self, Display, Formatter};
 
-use super::state::State;
 use crate::grammar::Grammar;
 use crate::symbol::Symbol;
+use crate::util;
 
-type Transition = (usize, usize, Symbol);
+use super::state::State;
+use super::transition::{ItemTransition, StateTransition};
 
 pub struct Automaton {
     grammar: Grammar,
     states: Vec<State>,
-    transitions: Vec<Transition>,
+    state_transitions: Vec<StateTransition>,
+    item_transitions: Vec<ItemTransition>,
 }
 
 impl Automaton {
     pub fn new(grammar: &Grammar) -> Automaton {
         let grammar = grammar.clone();
-        let mut states = Vec::new();
-        let mut transitions = HashSet::new();
 
-        let mut queue: VecDeque<(State, Symbol)> = VecDeque::new();
+        let mut states = Vec::new();
+        let mut buffer = HashSet::new();
+        let mut queue = VecDeque::new();
+
+        let mut state_transitions = HashSet::new();
+        let mut item_transitions = HashSet::new();
 
         let initial_state = State::initial(&grammar);
         states.push(initial_state.clone());
+        buffer.insert(initial_state.clone());
         enqueue(&mut queue, &initial_state);
 
         while let Some((state, symbol)) = queue.pop_front() {
-            let mut next_state = state.derive(&grammar, &symbol).unwrap();
+            let (mut next_state, transitions) =
+                state.derive(&grammar, &symbol, states.len()).unwrap();
+            let mut state_transition = StateTransition::new(state.id, next_state.id, symbol);
 
-            if let Some(existing) = states.iter().find(|state| **state == next_state) {
-                transitions.insert((state.id, existing.id, symbol));
-            } else {
-                next_state.id = states.len();
-                states.push(next_state.clone());
-                transitions.insert((state.id, next_state.id, symbol));
-                enqueue(&mut queue, &next_state);
+            if let Some(state) = buffer.get(&next_state) {
+                state_transition.to = state.id;
+                state_transitions.insert(state_transition);
+
+                for transition in transitions {
+                    let mut transition = transition.clone();
+
+                    if transition.from.0 == next_state.id {
+                        transition.from.0 = state.id;
+                    }
+
+                    if transition.to.0 == next_state.id {
+                        transition.to.0 = state.id;
+                    }
+
+                    item_transitions.insert(transition);
+                }
+
+                continue;
             }
-        }
 
-        let mut transitions: Vec<Transition> = transitions.into_iter().collect();
-        transitions.sort_unstable();
+            next_state.id = states.len();
+            states.push(next_state.clone());
+            buffer.insert(next_state.clone());
+            state_transitions.insert(state_transition);
+            item_transitions.extend(transitions);
+            enqueue(&mut queue, &next_state);
+        }
 
         Automaton {
             grammar,
             states,
-            transitions,
+            state_transitions: util::to_sorted_vec(&state_transitions),
+            item_transitions: util::to_sorted_vec(&item_transitions),
         }
     }
 
@@ -57,35 +81,51 @@ impl Automaton {
                 let items = state
                     .items
                     .iter()
-                    .map(|item| item.to_string().replace("\"", "\\\""))
+                    .map(|item| {
+                        let label = item.to_string().replace("\"", "\\\"");
+                        format!("<{}> {}", item.id, label)
+                    })
                     .collect::<Vec<String>>()
-                    .join("\\n");
+                    .join(" | ");
 
                 format!(
-                    "    {0} [label=\"{0}|{1}\", shape=record];",
+                    "    {0} [label=\"{0} | {1}\", shape=record];",
                     state.id, items
                 )
             })
             .collect::<Vec<String>>()
             .join("\n");
 
-        let edges = self
-            .transitions
+        let state_edges = self
+            .state_transitions
             .iter()
-            .map(|(left, right, symbol)| {
+            .map(|StateTransition { from, to, symbol }| {
+                let label = symbol.to_string().replace("\"", "\\\"");
+                format!("    {} -> {} [label=\"{}\"];", from, to, label)
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        let item_edges = self
+            .item_transitions
+            .iter()
+            .map(|ItemTransition { from, to, symbol }| {
+                let color = match symbol {
+                    Symbol::Null => "red",
+                    _ => "blue",
+                };
+
                 format!(
-                    "    {} -> {} [label=\"{}\"];",
-                    left,
-                    right,
-                    symbol.to_string().replace("\"", "\\\"")
+                    "    {}:{} -> {}:{} [color={}];",
+                    from.0, from.1, to.0, to.1, color
                 )
             })
             .collect::<Vec<String>>()
             .join("\n");
 
         format!(
-            "digraph {0} {{\n    label=\"{0}\";\n    rankdir=LR;\n\n{1}\n\n{2}\n}}",
-            self.grammar.name, nodes, edges
+            "digraph {0} {{\n    label=\"{0}\";\n    rankdir=LR;\n\n{1}\n\n{2}\n\n{3}\n}}",
+            self.grammar.name, nodes, state_edges, item_edges
         )
     }
 }
@@ -98,44 +138,14 @@ fn enqueue(queue: &mut VecDeque<(State, Symbol)>, state: &State) {
 
 impl Display for Automaton {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let (left, right) = self
-            .transitions
-            .iter()
-            .map(|(from, to, _)| (from.to_string().len(), to.to_string().len()))
-            .fold((0, 0), |(left, right), (from, to)| {
-                (cmp::max(left, from), cmp::max(right, to))
-            });
+        let states = util::to_string(self.states.iter(), "\n");
+        let state_transitions = util::to_string(self.state_transitions.iter(), "\n");
+        let item_transitions = util::to_string(self.item_transitions.iter(), "\n");
 
-        let states = self
-            .states
-            .iter()
-            .map(|state| {
-                format!(
-                    "{:<width$} {}",
-                    state.id,
-                    state,
-                    width = cmp::max(left, right)
-                )
-            })
-            .collect::<Vec<String>>()
-            .join("\n");
-
-        let transitions = self
-            .transitions
-            .iter()
-            .map(|(from, to, symbol)| {
-                format!(
-                    "{:<left$} → {:<right$} {}",
-                    from,
-                    to,
-                    symbol,
-                    left = left,
-                    right = right,
-                )
-            })
-            .collect::<Vec<String>>()
-            .join("\n");
-
-        write!(f, "{}\n\n{}", states, transitions)
+        write!(
+            f,
+            "{}\n\n{}\n\n{}",
+            states, state_transitions, item_transitions
+        )
     }
 }

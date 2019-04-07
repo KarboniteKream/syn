@@ -5,6 +5,7 @@ use std::fmt::{self, Display, Formatter};
 
 use crate::rule::Rule;
 use crate::symbol::Symbol;
+use crate::util;
 
 #[derive(Clone, Debug)]
 pub struct Grammar {
@@ -82,8 +83,7 @@ impl Grammar {
         }
 
         if !nonterminals.is_empty() {
-            let mut not_realizable: Vec<&Symbol> = nonterminals.into_iter().collect();
-            not_realizable.sort_unstable();
+            let not_realizable = util::to_sorted_vec(&nonterminals);
             return Err(GrammarError::NotRealizable(not_realizable[0].clone()));
         }
 
@@ -160,37 +160,21 @@ impl Grammar {
             }
         }
 
-        let mut first: Vec<Symbol> = buffer.into_iter().collect();
-        first.sort_unstable();
-        first
+        util::to_sorted_vec(&buffer)
     }
 
     fn cache_first(&self, symbol: &Symbol, buffer: &HashSet<Symbol>) -> Vec<Symbol> {
-        let mut first: Vec<Symbol> = buffer.iter().cloned().collect();
-        first.sort_unstable();
-
+        let first = util::to_sorted_vec(buffer);
         let mut cache = self.first.borrow_mut();
         cache.insert(symbol.clone(), first.clone());
-
         first
     }
 }
 
 impl Display for Grammar {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let rules = self
-            .all_rules
-            .iter()
-            .map(Rule::to_string)
-            .collect::<Vec<String>>();
-
-        write!(
-            f,
-            "{} ({})\n{}",
-            self.name,
-            self.description,
-            rules.join("\n")
-        )
+        let rules = util::to_string(self.all_rules.iter(), "\n");
+        write!(f, "{} ({})\n{}", self.name, self.description, rules)
     }
 }
 

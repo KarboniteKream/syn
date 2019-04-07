@@ -2,10 +2,13 @@ use std::collections::{HashSet, VecDeque};
 use std::fmt::{self, Display, Formatter};
 use std::hash::{Hash, Hasher};
 
-use super::item::Item;
 use crate::grammar::Grammar;
 use crate::rule::Rule;
 use crate::symbol::Symbol;
+use crate::util;
+
+use super::item::Item;
+use super::transition::ItemTransition;
 
 #[derive(Clone, Debug)]
 pub struct State {
@@ -28,7 +31,7 @@ impl State {
             ],
         );
 
-        State::new(0, vec![Item::new(rule, Symbol::Null)])
+        State::new(0, vec![Item::new(0, rule, Symbol::Null)])
     }
 
     pub fn transitions(&self) -> Vec<&Symbol> {
@@ -39,12 +42,15 @@ impl State {
             .filter(|symbol| **symbol != Symbol::Null)
             .collect();
 
-        let mut transitions: Vec<&Symbol> = transitions.into_iter().collect();
-        transitions.sort_unstable();
-        transitions
+        util::to_sorted_vec(&transitions)
     }
 
-    pub fn derive(&self, grammar: &Grammar, symbol: &Symbol) -> Option<State> {
+    pub fn derive(
+        &self,
+        grammar: &Grammar,
+        symbol: &Symbol,
+        id: usize,
+    ) -> Option<(State, HashSet<ItemTransition>)> {
         let mut items: Vec<Item> = self
             .items
             .iter()
@@ -59,10 +65,19 @@ impl State {
             return None;
         }
 
+        let mut transitions: HashSet<ItemTransition> = HashSet::new();
+
         let mut buffer = HashSet::new();
         let mut queue = VecDeque::new();
 
-        for item in &mut items {
+        for (idx, item) in items.iter_mut().enumerate() {
+            transitions.insert(ItemTransition::new(
+                (self.id, item.id),
+                (id, idx),
+                symbol.clone(),
+            ));
+
+            item.id = idx;
             item.pass();
             buffer.insert(item.clone());
 
@@ -78,23 +93,29 @@ impl State {
             for rule in &grammar.rules[head] {
                 for sym in &first {
                     let rule = Rule::new(head.clone(), rule.body.clone());
-                    let item = Item::new(rule, sym.clone());
+                    let next_item = Item::new(items.len(), rule, sym.clone());
 
-                    if buffer.contains(&item) {
+                    let mut transition =
+                        ItemTransition::new((id, item.id), (id, next_item.id), Symbol::Null);
+
+                    if let Some(item) = buffer.get(&next_item) {
+                        transition.to.1 = item.id;
+                        transitions.insert(transition);
                         continue;
                     }
 
-                    if item.is_nonterminal() {
-                        queue.push_back(item.clone());
+                    if next_item.is_nonterminal() {
+                        queue.push_back(next_item.clone());
                     }
 
-                    buffer.insert(item.clone());
-                    items.push(item);
+                    buffer.insert(next_item.clone());
+                    items.push(next_item.clone());
+                    transitions.insert(transition);
                 }
             }
         }
 
-        Some(State::new(0, items))
+        Some((State::new(id, items), transitions))
     }
 }
 
@@ -114,13 +135,7 @@ impl Hash for State {
 
 impl Display for State {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let items = self
-            .items
-            .iter()
-            .map(Item::to_string)
-            .collect::<Vec<String>>()
-            .join(";  ");
-
-        write!(f, "[{}]", items)
+        let items = util::to_string(self.items.iter(), "; ");
+        write!(f, "{} [{}]", self.id, items)
     }
 }
