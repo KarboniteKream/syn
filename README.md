@@ -1,7 +1,7 @@
 # syn
 
 ## Requirements
-- Rust 1.32.0 or later
+- Rust 1.31.0 or later
 
 ## Usage
 ```bash

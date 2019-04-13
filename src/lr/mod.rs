@@ -3,4 +3,4 @@ mod item;
 mod state;
 mod transition;
 
-pub use automaton::Automaton;
+pub use self::automaton::Automaton;
