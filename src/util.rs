@@ -1,5 +1,28 @@
 use std::fmt::Display;
 
+use clap::{crate_authors, crate_name, crate_version, App, Arg, ArgMatches};
+
+pub fn parse_args<'a>() -> ArgMatches<'a> {
+    App::new(crate_name!())
+        .version(crate_version!())
+        .author(crate_authors!())
+        .arg(
+            Arg::with_name("filename")
+                .value_name("INPUT")
+                .help("Grammar file name")
+                .required(true),
+        )
+        .arg(
+            Arg::with_name("output")
+                .long("output")
+                .short("o")
+                .value_name("FILE")
+                .help("Output file name")
+                .takes_value(true),
+        )
+        .get_matches()
+}
+
 pub fn to_sorted_vec<I, T>(collection: &I) -> Vec<T>
 where
     I: Clone + IntoIterator<Item = T>,

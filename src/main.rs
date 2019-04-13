@@ -1,7 +1,5 @@
-use std::env;
 use std::fs;
 use std::path::Path;
-
 use std::process;
 
 mod grammar;
@@ -12,17 +10,13 @@ mod symbol;
 mod util;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        eprintln!("Please specify a grammar file name");
-        process::exit(1);
-    }
+    let args = util::parse_args();
 
-    let filename = Path::new(&args[1]);
-    let grammar = match parser::parse_file(filename) {
+    let filename = args.value_of("filename").unwrap();
+    let grammar = match parser::parse_file(Path::new(filename)) {
         Ok(grammar) => grammar,
         Err(error) => {
-            eprintln!("Unable to parse file '{}': {}", filename.display(), error);
+            eprintln!("Unable to parse file '{}': {}", filename, error);
             process::exit(1);
         }
     };
@@ -37,11 +31,11 @@ fn main() {
     let automaton = lr::Automaton::new(&grammar);
     println!("Automaton\n{}", automaton);
 
-    if let Some(output) = args.get(2).map(Path::new) {
+    if let Some(output) = args.value_of("output") {
         let contents: String = automaton.to_dot();
 
-        if let Err(error) = fs::write(output, contents) {
-            eprintln!("Unable to save to file '{}': {}", output.display(), error);
+        if let Err(error) = fs::write(Path::new(output), contents) {
+            eprintln!("Unable to save to file '{}': {}", output, error);
             process::exit(1);
         }
     }
