@@ -8,34 +8,34 @@ use crate::symbol::Symbol;
 pub struct Item {
     pub id: usize,
     pub rule: Rule,
-    curr: usize,
-    follower: Symbol,
+    head: usize,
+    lookahead: Symbol,
     pub unique: bool,
 }
 
 impl Item {
-    pub fn new(id: usize, rule: Rule, follower: Symbol, unique: bool) -> Item {
+    pub fn new(id: usize, rule: Rule, lookahead: Symbol, unique: bool) -> Item {
         Item {
             id,
             rule,
-            curr: 0,
-            follower,
+            head: 0,
+            lookahead,
             unique,
         }
     }
 
     pub fn head(&self) -> Option<&Symbol> {
-        self.rule.body.get(self.curr)
+        self.rule.body.get(self.head)
     }
 
     pub fn tail(&self) -> Vec<Symbol> {
-        let mut tail: Vec<Symbol> = self.rule.body[self.curr + 1..].to_vec();
-        tail.push(self.follower.clone());
+        let mut tail: Vec<Symbol> = self.rule.body[self.head + 1..].to_vec();
+        tail.push(self.lookahead.clone());
         tail
     }
 
     pub fn pass(&mut self) {
-        self.curr += 1;
+        self.head += 1;
     }
 
     pub fn is_nonterminal(&self) -> bool {
@@ -49,8 +49,8 @@ impl Item {
 impl PartialEq for Item {
     fn eq(&self, other: &Item) -> bool {
         self.rule == other.rule
-            && self.curr == other.curr
-            && self.follower == other.follower
+            && self.head == other.head
+            && self.lookahead == other.lookahead
             && self.unique == other.unique
     }
 }
@@ -60,8 +60,8 @@ impl Eq for Item {}
 impl Hash for Item {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.rule.hash(state);
-        self.curr.hash(state);
-        self.follower.hash(state);
+        self.head.hash(state);
+        self.lookahead.hash(state);
         self.unique.hash(state);
     }
 }
@@ -76,7 +76,7 @@ impl Display for Item {
             self.rule.body.iter().map(Symbol::to_string).collect()
         };
 
-        if let Some(symbol) = body.get_mut(self.curr) {
+        if let Some(symbol) = body.get_mut(self.head) {
             *symbol = pointer + symbol;
         } else {
             body.push(pointer);
@@ -87,7 +87,7 @@ impl Display for Item {
             "{} → {}, {}",
             self.rule.head,
             body.join(" "),
-            self.follower
+            self.lookahead
         )
     }
 }
