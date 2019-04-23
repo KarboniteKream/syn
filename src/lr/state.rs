@@ -31,7 +31,7 @@ impl State {
             ],
         );
 
-        State::new(0, vec![Item::new(0, rule, Symbol::Null)])
+        State::new(0, vec![Item::new(0, rule, Symbol::Null, true)])
     }
 
     pub fn transitions(&self) -> Vec<&Symbol> {
@@ -79,11 +79,15 @@ impl State {
 
             item.id = idx;
             item.pass();
-            buffer.insert(item.clone());
 
             if item.is_nonterminal() {
                 queue.push_back(item.clone());
             }
+
+            buffer.insert(item.clone());
+            let mut item = item.clone();
+            item.unique = !item.unique;
+            buffer.insert(item);
         }
 
         while let Some(item) = queue.pop_front() {
@@ -93,7 +97,7 @@ impl State {
             for rule in &grammar.rules[head] {
                 for sym in &first {
                     let rule = Rule::new(head.clone(), rule.body.clone());
-                    let next_item = Item::new(items.len(), rule, sym.clone());
+                    let mut next_item = Item::new(items.len(), rule, sym.clone(), item.unique);
 
                     let mut transition =
                         ItemTransition::new((id, item.id), (id, next_item.id), Symbol::Null);
@@ -101,6 +105,20 @@ impl State {
                     if let Some(item) = buffer.get(&next_item) {
                         transition.to.1 = item.id;
                         transitions.insert(transition);
+
+                        let prev_items: Vec<&Item> = transitions
+                            .iter()
+                            .filter(|transition| transition.to.1 == item.id)
+                            .map(|transition| transition.from.1)
+                            .filter_map(|item_id| {
+                                items.get(item_id).or_else(|| self.items.get(item_id))
+                            })
+                            .collect();
+
+                        items[item.id].unique = prev_items
+                            .iter()
+                            .all(|item| item.unique && item.rule == prev_items[0].rule);
+
                         continue;
                     }
 
@@ -108,9 +126,12 @@ impl State {
                         queue.push_back(next_item.clone());
                     }
 
-                    buffer.insert(next_item.clone());
                     items.push(next_item.clone());
                     transitions.insert(transition);
+
+                    buffer.insert(next_item.clone());
+                    next_item.unique = !next_item.unique;
+                    buffer.insert(next_item);
                 }
             }
         }

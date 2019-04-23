@@ -7,18 +7,20 @@ use crate::symbol::Symbol;
 #[derive(Clone, Debug)]
 pub struct Item {
     pub id: usize,
-    rule: Rule,
+    pub rule: Rule,
     curr: usize,
     follower: Symbol,
+    pub unique: bool,
 }
 
 impl Item {
-    pub fn new(id: usize, rule: Rule, follower: Symbol) -> Item {
+    pub fn new(id: usize, rule: Rule, follower: Symbol, unique: bool) -> Item {
         Item {
             id,
             rule,
             curr: 0,
             follower,
+            unique,
         }
     }
 
@@ -46,7 +48,10 @@ impl Item {
 
 impl PartialEq for Item {
     fn eq(&self, other: &Item) -> bool {
-        self.rule == other.rule && self.curr == other.curr && self.follower == other.follower
+        self.rule == other.rule
+            && self.curr == other.curr
+            && self.follower == other.follower
+            && self.unique == other.unique
     }
 }
 
@@ -57,6 +62,7 @@ impl Hash for Item {
         self.rule.hash(state);
         self.curr.hash(state);
         self.follower.hash(state);
+        self.unique.hash(state);
     }
 }
 

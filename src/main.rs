@@ -26,10 +26,10 @@ fn main() {
         process::exit(1);
     }
 
-    println!("Grammar\n{}\n", grammar);
+    println!("Grammar\n{}", grammar);
 
     let automaton = lr::Automaton::new(&grammar);
-    println!("Automaton\n{}", automaton);
+    println!("\nAutomaton\n{}", automaton);
 
     if let Some(output) = args.value_of("output") {
         let contents: String = automaton.to_dot();

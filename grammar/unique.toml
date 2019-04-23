@@ -1,0 +1,21 @@
+name = "unique"
+
+[rules]
+S = [
+    "A",
+    "B",
+]
+
+A = [
+    "a C a",
+    "b C a",
+]
+
+B = [
+    "c C a a",
+    "c C a b",
+]
+
+C = [
+    "d",
+]
