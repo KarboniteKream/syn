@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
+use std::error;
 use std::fmt::{self, Display, Formatter};
 
 use crate::rule::Rule;
@@ -34,9 +34,9 @@ impl Grammar {
         self.rules.insert(symbol.clone(), rules.to_vec());
     }
 
-    pub fn verify(&self) -> Result<(), GrammarError> {
+    pub fn verify(&self) -> Result<(), Error> {
         if !self.rules.contains_key(&self.start_symbol) {
-            return Err(GrammarError::NoSymbol(self.start_symbol.clone()));
+            return Err(Error::NoSymbol(self.start_symbol.clone()));
         }
 
         let mut nonterminals: HashSet<&Symbol> =
@@ -46,13 +46,13 @@ impl Grammar {
 
         for symbol in self.rules.keys() {
             if !nonterminals.contains(symbol) {
-                return Err(GrammarError::Unreachable(symbol.clone()));
+                return Err(Error::Unreachable(symbol.clone()));
             }
         }
 
         for (symbol, rules) in &self.rules {
             if !rules.is_empty() && rules.iter().all(|rule| rule.first() == symbol) {
-                return Err(GrammarError::LeftRecursive(symbol.clone()));
+                return Err(Error::LeftRecursive(symbol.clone()));
             }
         }
 
@@ -84,7 +84,7 @@ impl Grammar {
 
         if !nonterminals.is_empty() {
             let not_realizable = util::to_sorted_vec(&nonterminals);
-            return Err(GrammarError::NotRealizable(not_realizable[0].clone()));
+            return Err(Error::NotRealizable(not_realizable[0].clone()));
         }
 
         Ok(())
@@ -179,22 +179,22 @@ impl Display for Grammar {
 }
 
 #[derive(Debug)]
-pub enum GrammarError {
+pub enum Error {
     NoSymbol(Symbol),
     Unreachable(Symbol),
     LeftRecursive(Symbol),
     NotRealizable(Symbol),
 }
 
-impl Display for GrammarError {
+impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            GrammarError::NoSymbol(symbol) => write!(f, "Symbol {} does not exist", symbol),
-            GrammarError::Unreachable(symbol) => write!(f, "Symbol {} is unreachable", symbol),
-            GrammarError::LeftRecursive(symbol) => write!(f, "Symbol {} is left recursive", symbol),
-            GrammarError::NotRealizable(symbol) => write!(f, "Symbol {} is not realizable", symbol),
+            Error::NoSymbol(symbol) => write!(f, "Symbol {} does not exist", symbol),
+            Error::Unreachable(symbol) => write!(f, "Symbol {} is unreachable", symbol),
+            Error::LeftRecursive(symbol) => write!(f, "Symbol {} is left recursive", symbol),
+            Error::NotRealizable(symbol) => write!(f, "Symbol {} is not realizable", symbol),
         }
     }
 }
 
-impl Error for GrammarError {}
+impl error::Error for Error {}

@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::error::Error;
+use std::error;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::Path;
@@ -10,18 +10,18 @@ use crate::grammar::Grammar;
 use crate::rule::Rule;
 use crate::symbol::Symbol;
 
-pub fn parse_file(filename: &Path) -> Result<Grammar, ParseError> {
+pub fn parse_file(filename: &Path) -> Result<Grammar, Error> {
     let value = match fs::read_to_string(filename) {
         Ok(contents) => match contents.parse::<Value>() {
             Ok(value) => value,
-            Err(error) => return Err(ParseError::File(error.to_string())),
+            Err(error) => return Err(Error::File(error.to_string())),
         },
-        Err(error) => return Err(ParseError::File(error.to_string())),
+        Err(error) => return Err(Error::File(error.to_string())),
     };
 
     let data: &Map<String, Value> = match value.as_table() {
         Some(value) => value,
-        None => return Err(ParseError::File("Not a Table".to_owned())),
+        None => return Err(Error::File("Not a Table".to_owned())),
     };
 
     let name = from_table(&data, "name", &Value::as_str)?.to_owned();
@@ -35,7 +35,7 @@ pub fn parse_file(filename: &Path) -> Result<Grammar, ParseError> {
     let rules = from_table(&data, "rules", &Value::as_table)?;
 
     if rules.is_empty() {
-        return Err(ParseError::File("No rules defined".to_owned()));
+        return Err(Error::File("No rules defined".to_owned()));
     }
 
     let start_symbol = Symbol::NonTerminal(
@@ -59,7 +59,7 @@ pub fn parse_file(filename: &Path) -> Result<Grammar, ParseError> {
         for rule in rules {
             let rule = match rule.as_str() {
                 Some(value) => value,
-                None => return Err(ParseError::Rule(name.to_owned())),
+                None => return Err(Error::Rule(name.to_owned())),
             };
 
             let body = if rule.is_empty() {
@@ -89,28 +89,28 @@ fn from_table<'a, T: ?Sized>(
     data: &'a Map<String, Value>,
     key: &str,
     f: &Fn(&'a Value) -> Option<&T>,
-) -> Result<&'a T, ParseError> {
+) -> Result<&'a T, Error> {
     match data.get(key).and_then(f) {
         Some(value) => Ok(value),
-        None => Err(ParseError::Key(key.to_owned())),
+        None => Err(Error::Key(key.to_owned())),
     }
 }
 
 #[derive(Debug)]
-pub enum ParseError {
+pub enum Error {
     File(String),
     Key(String),
     Rule(String),
 }
 
-impl Display for ParseError {
+impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            ParseError::File(error) => write!(f, "Cannot parse file: {}", error),
-            ParseError::Key(name) => write!(f, "Cannot parse key '{}'", name),
-            ParseError::Rule(name) => write!(f, "Cannot parse rule {}", name),
+            Error::File(error) => write!(f, "Cannot parse file: {}", error),
+            Error::Key(name) => write!(f, "Cannot parse key '{}'", name),
+            Error::Rule(name) => write!(f, "Cannot parse rule {}", name),
         }
     }
 }
 
-impl Error for ParseError {}
+impl error::Error for Error {}
