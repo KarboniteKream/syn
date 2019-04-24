@@ -8,7 +8,7 @@ use crate::symbol::Symbol;
 pub struct Item {
     pub id: usize,
     pub rule: Rule,
-    head: usize,
+    pub idx: usize,
     lookahead: Symbol,
     pub unique: bool,
 }
@@ -18,24 +18,24 @@ impl Item {
         Item {
             id,
             rule,
-            head: 0,
+            idx: 0,
             lookahead,
             unique,
         }
     }
 
     pub fn head(&self) -> Option<&Symbol> {
-        self.rule.body.get(self.head)
+        self.rule.body.get(self.idx)
     }
 
     pub fn tail(&self) -> Vec<Symbol> {
-        let mut tail: Vec<Symbol> = self.rule.body[self.head + 1..].to_vec();
+        let mut tail: Vec<Symbol> = self.rule.body[self.idx + 1..].to_vec();
         tail.push(self.lookahead.clone());
         tail
     }
 
     pub fn pass(&mut self) {
-        self.head += 1;
+        self.idx += 1;
     }
 
     pub fn is_nonterminal(&self) -> bool {
@@ -49,7 +49,7 @@ impl Item {
 impl PartialEq for Item {
     fn eq(&self, other: &Item) -> bool {
         self.rule == other.rule
-            && self.head == other.head
+            && self.idx == other.idx
             && self.lookahead == other.lookahead
             && self.unique == other.unique
     }
@@ -60,7 +60,7 @@ impl Eq for Item {}
 impl Hash for Item {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.rule.hash(state);
-        self.head.hash(state);
+        self.idx.hash(state);
         self.lookahead.hash(state);
         self.unique.hash(state);
     }
@@ -68,7 +68,7 @@ impl Hash for Item {
 
 impl Display for Item {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let pointer = String::from("·");
+        let dot = String::from("·");
 
         let mut body = if self.rule.body == vec![Symbol::Null] {
             Vec::new()
@@ -76,18 +76,21 @@ impl Display for Item {
             self.rule.body.iter().map(Symbol::to_string).collect()
         };
 
-        if let Some(symbol) = body.get_mut(self.head) {
-            *symbol = pointer + symbol;
+        if let Some(symbol) = body.get_mut(self.idx) {
+            *symbol = dot + symbol;
         } else {
-            body.push(pointer);
+            body.push(dot);
         }
+
+        let unique = if self.unique { "○" } else { "×" };
 
         write!(
             f,
-            "{} → {}, {}",
+            "{} → {}, {} {}",
             self.rule.head,
             body.join(" "),
-            self.lookahead
+            self.lookahead,
+            unique
         )
     }
 }

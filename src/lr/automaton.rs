@@ -74,7 +74,7 @@ impl Automaton {
     }
 
     pub fn to_dot(&self) -> String {
-        let nodes = self
+        let states = self
             .states
             .iter()
             .map(|state| {
@@ -96,7 +96,7 @@ impl Automaton {
             .collect::<Vec<String>>()
             .join("\n");
 
-        let state_edges = self
+        let state_transitions = self
             .state_transitions
             .iter()
             .map(|StateTransition { from, to, symbol }| {
@@ -106,7 +106,7 @@ impl Automaton {
             .collect::<Vec<String>>()
             .join("\n");
 
-        let item_edges = self
+        let item_transitions = self
             .item_transitions
             .iter()
             .map(|ItemTransition { from, to, symbol }| {
@@ -131,7 +131,7 @@ impl Automaton {
 
         format!(
             "digraph {0} {{\n    label=\"{0}\";\n    rankdir=LR;\n\n{1}\n\n{2}\n\n{3}\n}}",
-            self.grammar.name, nodes, state_edges, item_edges
+            self.grammar.name, states, state_transitions, item_transitions
         )
     }
 }

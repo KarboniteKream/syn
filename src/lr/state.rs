@@ -106,7 +106,7 @@ impl State {
                         transition.to.1 = item.id;
                         transitions.insert(transition);
 
-                        let prev_items: Vec<&Item> = transitions
+                        let parents: Vec<&Item> = transitions
                             .iter()
                             .filter(|transition| transition.to.1 == item.id)
                             .map(|transition| transition.from.1)
@@ -115,9 +115,11 @@ impl State {
                             })
                             .collect();
 
-                        items[item.id].unique = prev_items
-                            .iter()
-                            .all(|item| item.unique && item.rule == prev_items[0].rule);
+                        items[item.id].unique = parents.iter().all(|item| {
+                            item.unique
+                                && item.rule == parents[0].rule
+                                && item.idx == parents[0].idx
+                        });
 
                         continue;
                     }
