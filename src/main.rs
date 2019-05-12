@@ -2,13 +2,14 @@ use std::fs;
 use std::path::Path;
 use std::process;
 
+mod automaton;
 mod grammar;
-mod lr;
 mod parser;
 mod rule;
 mod symbol;
 mod util;
 
+use automaton::Automaton;
 use util::to_sorted_vec;
 
 fn main() {
@@ -30,7 +31,7 @@ fn main() {
 
     println!("Grammar\n{}", grammar);
 
-    let automaton = lr::Automaton::new(&grammar);
+    let automaton = Automaton::new(&grammar);
     println!("\nAutomaton\n{}", automaton);
 
     println!("\nACTION");

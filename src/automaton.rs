@@ -1,13 +1,18 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::{self, Display, Formatter};
 
+mod action;
+mod item;
+mod state;
+mod transition;
+
 use crate::grammar::Grammar;
 use crate::symbol::Symbol;
 use crate::util;
 
-use super::action::Action;
-use super::state::State;
-use super::transition::{ItemTransition, StateTransition};
+use action::Action;
+use state::State;
+use transition::{ItemTransition, StateTransition};
 
 pub struct Automaton {
     grammar: Grammar,
