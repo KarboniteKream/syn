@@ -9,6 +9,8 @@ mod rule;
 mod symbol;
 mod util;
 
+use util::to_sorted_vec;
+
 fn main() {
     let args = util::parse_args();
 
@@ -30,6 +32,18 @@ fn main() {
 
     let automaton = lr::Automaton::new(&grammar);
     println!("\nAutomaton\n{}", automaton);
+
+    println!("\nACTION");
+    let action_table = to_sorted_vec(&automaton.action_table());
+    for ((state, symbol), action) in action_table {
+        println!("{}, {} → {}", state, symbol, action);
+    }
+
+    println!("\nGOTO");
+    let goto_table = to_sorted_vec(&automaton.goto_table());
+    for ((from, symbol), to) in goto_table {
+        println!("{}, {} → {}", from, symbol, to);
+    }
 
     if let Some(output) = args.value_of("output") {
         let contents: String = automaton.to_dot();

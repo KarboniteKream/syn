@@ -1,3 +1,4 @@
+mod action;
 mod automaton;
 mod item;
 mod state;

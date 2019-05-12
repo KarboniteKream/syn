@@ -1,10 +1,11 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::{self, Display, Formatter};
 
 use crate::grammar::Grammar;
 use crate::symbol::Symbol;
 use crate::util;
 
+use super::action::Action;
 use super::state::State;
 use super::transition::{ItemTransition, StateTransition};
 
@@ -71,6 +72,48 @@ impl Automaton {
             state_transitions: util::to_sorted_vec(&state_transitions),
             item_transitions: util::to_sorted_vec(&item_transitions),
         }
+    }
+
+    pub fn action_table(&self) -> HashMap<(usize, Symbol), Action> {
+        let mut action_table: HashMap<(usize, Symbol), Action> = self
+            .state_transitions
+            .iter()
+            .filter_map(|transition| match transition.symbol {
+                Symbol::Terminal(_) => Some(transition.clone()),
+                _ => None,
+            })
+            .map(|StateTransition { from, to, symbol }| ((from, symbol), Action::Shift(to)))
+            .collect();
+
+        for state in &self.states {
+            for item in &state.items {
+                if item.head().filter(|head| **head != Symbol::Null).is_some() {
+                    continue;
+                }
+
+                let (key, action) = if item.rule.id == 0 {
+                    ((state.id, Symbol::Delimiter), Action::Accept)
+                } else {
+                    let symbol = item.lookahead.clone();
+                    ((state.id, symbol), Action::Reduce(item.rule.id))
+                };
+
+                action_table.insert(key, action);
+            }
+        }
+
+        action_table
+    }
+
+    pub fn goto_table(&self) -> HashMap<(usize, Symbol), usize> {
+        self.state_transitions
+            .iter()
+            .filter_map(|transition| match transition.symbol {
+                Symbol::NonTerminal(_) => Some(transition.clone()),
+                _ => None,
+            })
+            .map(|StateTransition { from, to, symbol }| ((from, symbol), to))
+            .collect()
     }
 
     pub fn to_dot(&self) -> String {

@@ -23,6 +23,7 @@ impl State {
 
     pub fn initial(grammar: &Grammar) -> State {
         let rule = Rule::new(
+            0,
             Symbol::NonTerminal(grammar.start_symbol.name().to_owned() + "'"),
             vec![
                 Symbol::Delimiter,
@@ -96,7 +97,7 @@ impl State {
 
             for rule in &grammar.rules[head] {
                 for sym in &first {
-                    let rule = Rule::new(head.clone(), rule.body.clone());
+                    let rule = Rule::new(rule.id, head.clone(), rule.body.clone());
                     let mut next_item = Item::new(items.len(), rule, sym.clone(), item.unique);
 
                     let mut transition =

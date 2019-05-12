@@ -9,7 +9,7 @@ pub struct Item {
     pub id: usize,
     pub rule: Rule,
     pub idx: usize,
-    lookahead: Symbol,
+    pub lookahead: Symbol,
     pub unique: bool,
 }
 
@@ -29,7 +29,12 @@ impl Item {
     }
 
     pub fn tail(&self) -> Vec<Symbol> {
-        let mut tail: Vec<Symbol> = self.rule.body[self.idx + 1..].to_vec();
+        let mut tail = if self.head().is_some() {
+            self.rule.body[self.idx + 1..].to_vec()
+        } else {
+            Vec::new()
+        };
+
         tail.push(self.lookahead.clone());
         tail
     }

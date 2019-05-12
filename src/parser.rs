@@ -44,8 +44,9 @@ pub fn parse_file(filename: &Path) -> Result<Grammar, Error> {
             .to_owned(),
     );
 
-    let mut grammar = Grammar::new(name, description, start_symbol);
     let nonterminals: HashSet<&str> = rules.keys().map(String::as_str).collect();
+    let mut grammar = Grammar::new(name, description, start_symbol);
+    let mut rule_id = 1;
 
     for (name, rules) in rules {
         let symbol = Symbol::NonTerminal(name.clone());
@@ -76,7 +77,8 @@ pub fn parse_file(filename: &Path) -> Result<Grammar, Error> {
                     .collect()
             };
 
-            list.push(Rule::new(symbol.clone(), body));
+            list.push(Rule::new(rule_id, symbol.clone(), body));
+            rule_id += 1;
         }
 
         grammar.add_rules(&symbol, &list);

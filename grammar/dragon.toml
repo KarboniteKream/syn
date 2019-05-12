@@ -1,0 +1,19 @@
+name = "dragon"
+description = "Example from the Dragon Book"
+start_symbol = "E"
+
+[rules]
+E = [
+    "E + T",
+    "T",
+]
+
+T = [
+    "T * F",
+    "F",
+]
+
+F = [
+    "( E )",
+    "id",
+]
