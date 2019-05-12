@@ -46,6 +46,12 @@ fn main() {
         println!("{}, {} → {}", from, symbol, to);
     }
 
+    println!("\nUNIQUE");
+    let unique_table = to_sorted_vec(&automaton.unique_table(&grammar));
+    for ((state, symbol), rule_id) in unique_table {
+        println!("{}, {} → {}", state, symbol, rule_id);
+    }
+
     if let Some(output) = args.value_of("output") {
         let contents: String = automaton.to_dot();
 

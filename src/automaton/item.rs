@@ -40,14 +40,22 @@ impl Item {
     }
 
     pub fn pass(&mut self) {
-        self.idx += 1;
+        if self.idx < self.rule.body.len() {
+            self.idx += 1;
+        }
     }
 
-    pub fn is_nonterminal(&self) -> bool {
+    pub fn at_nonterminal(&self) -> bool {
         match self.head() {
             Some(head) => head.is_nonterminal(),
             None => false,
         }
+    }
+
+    pub fn follow(&self) -> Vec<Symbol> {
+        let mut follow = self.rule.body[self.idx..].to_vec();
+        follow.push(self.lookahead.clone());
+        follow
     }
 }
 

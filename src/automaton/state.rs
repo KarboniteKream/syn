@@ -81,7 +81,7 @@ impl State {
             item.id = idx;
             item.pass();
 
-            if item.is_nonterminal() {
+            if item.at_nonterminal() {
                 queue.push_back(item.clone());
             }
 
@@ -93,12 +93,12 @@ impl State {
 
         while let Some(item) = queue.pop_front() {
             let head: &Symbol = item.head().unwrap();
-            let first: Vec<Symbol> = grammar.first_sequence(&item.tail());
+            let lookaheads: Vec<Symbol> = grammar.first_sequence(&item.tail());
 
             for rule in &grammar.rules[head] {
-                for sym in &first {
+                for lookahead in lookaheads.clone() {
                     let rule = Rule::new(rule.id, head.clone(), rule.body.clone());
-                    let mut next_item = Item::new(items.len(), rule, sym.clone(), item.unique);
+                    let mut next_item = Item::new(items.len(), rule, lookahead, item.unique);
 
                     let mut transition =
                         ItemTransition::new((id, item.id), (id, next_item.id), Symbol::Null);
@@ -125,7 +125,7 @@ impl State {
                         continue;
                     }
 
-                    if next_item.is_nonterminal() {
+                    if next_item.at_nonterminal() {
                         queue.push_back(next_item.clone());
                     }
 

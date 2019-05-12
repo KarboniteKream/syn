@@ -121,6 +121,25 @@ impl Automaton {
             .collect()
     }
 
+    pub fn unique_table(&self, grammar: &Grammar) -> HashMap<(usize, Symbol), usize> {
+        self.states
+            .iter()
+            .flat_map(|state| {
+                state.items.iter().fold(HashMap::new(), |mut acc, item| {
+                    for symbol in grammar.first_sequence(&item.follow()) {
+                        acc.entry((state.id, symbol))
+                            .or_insert_with(Vec::new)
+                            .push(item);
+                    }
+
+                    acc
+                })
+            })
+            .filter(|(_, items)| items.len() == 1 && items[0].unique)
+            .map(|(key, items)| (key, items[0].id))
+            .collect()
+    }
+
     pub fn to_dot(&self) -> String {
         let states = self
             .states
