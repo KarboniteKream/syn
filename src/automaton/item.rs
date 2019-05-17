@@ -45,6 +45,12 @@ impl Item {
         }
     }
 
+    pub fn follow(&self) -> Vec<Symbol> {
+        let mut follow = self.rule.body[self.idx..].to_vec();
+        follow.push(self.lookahead.clone());
+        follow
+    }
+
     pub fn at_nonterminal(&self) -> bool {
         match self.head() {
             Some(head) => head.is_nonterminal(),
@@ -52,10 +58,26 @@ impl Item {
         }
     }
 
-    pub fn follow(&self) -> Vec<Symbol> {
-        let mut follow = self.rule.body[self.idx..].to_vec();
-        follow.push(self.lookahead.clone());
-        follow
+    pub fn can_reduce(&self) -> bool {
+        if self.rule.id == 0 {
+            return false;
+        }
+
+        match self.head() {
+            Some(head) => *head == Symbol::Null,
+            None => true,
+        }
+    }
+
+    pub fn can_accept(&self) -> bool {
+        if self.rule.id != 0 || self.idx == 0 {
+            return false;
+        }
+
+        match self.head() {
+            Some(head) => *head == Symbol::Delimiter,
+            None => false,
+        }
     }
 }
 

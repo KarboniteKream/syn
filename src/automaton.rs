@@ -92,18 +92,12 @@ impl Automaton {
 
         for state in &self.states {
             for item in &state.items {
-                if item.head().filter(|head| **head != Symbol::Null).is_some() {
-                    continue;
-                }
-
-                let (key, action) = if item.rule.id == 0 {
-                    ((state.id, Symbol::Delimiter), Action::Accept)
-                } else {
+                if item.can_reduce() {
                     let symbol = item.lookahead.clone();
-                    ((state.id, symbol), Action::Reduce(item.rule.id))
-                };
-
-                action_table.insert(key, action);
+                    action_table.insert((state.id, symbol), Action::Reduce(item.rule.id));
+                } else if item.can_accept() {
+                    action_table.insert((state.id, Symbol::Delimiter), Action::Accept);
+                }
             }
         }
 
