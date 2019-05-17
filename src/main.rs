@@ -19,7 +19,7 @@ fn main() {
     let grammar = match parser::parse_file(Path::new(filename)) {
         Ok(grammar) => grammar,
         Err(error) => {
-            eprintln!("Unable to parse file '{}': {}", filename, error);
+            eprintln!("File '{}' cannot be parsed: {}", filename, error);
             process::exit(1);
         }
     };
@@ -29,25 +29,31 @@ fn main() {
         process::exit(1);
     }
 
-    println!("Grammar\n{}", grammar);
-
     let automaton = Automaton::new(&grammar);
+    let action_table = match automaton.action_table() {
+        Ok(action_table) => to_sorted_vec(&action_table),
+        Err(error) => {
+            eprintln!("Grammar '{}' is not valid: {}", grammar.name, error);
+            process::exit(1);
+        }
+    };
+
+    println!("Grammar\n{}", grammar);
     println!("\nAutomaton\n{}", automaton);
 
     println!("\nACTION");
-    let action_table = to_sorted_vec(&automaton.action_table());
     for ((state, symbol), action) in action_table {
         println!("{}, {} → {}", state, symbol, action);
     }
 
-    println!("\nGOTO");
     let goto_table = to_sorted_vec(&automaton.goto_table());
+    println!("\nGOTO");
     for ((from, symbol), to) in goto_table {
         println!("{}, {} → {}", from, symbol, to);
     }
 
-    println!("\nUNIQUE");
     let unique_table = to_sorted_vec(&automaton.unique_table(&grammar));
+    println!("\nUNIQUE");
     for ((state, symbol), rule_id) in unique_table {
         println!("{}, {} → {}", state, symbol, rule_id);
     }

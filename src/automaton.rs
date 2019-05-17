@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::error;
 use std::fmt::{self, Display, Formatter};
 
 mod action;
@@ -79,7 +80,7 @@ impl Automaton {
         }
     }
 
-    pub fn action_table(&self) -> HashMap<(usize, Symbol), Action> {
+    pub fn action_table(&self) -> Result<HashMap<(usize, Symbol), Action>, Error> {
         let mut action_table: HashMap<(usize, Symbol), Action> = self
             .state_transitions
             .iter()
@@ -92,16 +93,26 @@ impl Automaton {
 
         for state in &self.states {
             for item in &state.items {
-                if item.can_reduce() {
-                    let symbol = item.lookahead.clone();
-                    action_table.insert((state.id, symbol), Action::Reduce(item.rule.id));
-                } else if item.can_accept() {
+                if item.can_accept() {
                     action_table.insert((state.id, Symbol::Delimiter), Action::Accept);
+                    continue;
                 }
+
+                if !item.can_reduce() {
+                    continue;
+                }
+
+                let key = (state.id, item.lookahead.clone());
+
+                if action_table.contains_key(&key) {
+                    return Err(Error::ActionConflict(key.0, key.1));
+                }
+
+                action_table.insert(key, Action::Reduce(item.rule.id));
             }
         }
 
-        action_table
+        Ok(action_table)
     }
 
     pub fn goto_table(&self) -> HashMap<(usize, Symbol), usize> {
@@ -216,3 +227,22 @@ impl Display for Automaton {
         )
     }
 }
+
+#[derive(Debug)]
+pub enum Error {
+    ActionConflict(usize, Symbol),
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Error::ActionConflict(state_id, symbol) => write!(
+                f,
+                "Shift/Reduce conflict in ACTION({}, {})",
+                state_id, symbol
+            ),
+        }
+    }
+}
+
+impl error::Error for Error {}
