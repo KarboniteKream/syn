@@ -8,7 +8,7 @@
 cargo run grammar/<grammar>.toml [-o <grammar>.dot]
 ```
 
-The `-o` argument is optional and specifies the desired output file for the graph in the [DOT](https://www.graphviz.org/doc/info/lang.html) language.
+The `-o` argument is optional and specifies the desired output file for a graph in the [DOT](https://www.graphviz.org/doc/info/lang.html) language.
 
 ## Grammar
 Grammar files are defined using the [TOML](https://github.com/toml-lang/toml) format.
