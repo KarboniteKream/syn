@@ -47,14 +47,20 @@ fn main() {
 
     let goto_table = util::to_sorted_vec(&automaton.goto_table());
     println!("\nGOTO");
-    for ((from, symbol), to) in goto_table {
-        println!("{}, {} → {}", from, symbol, to);
+    for ((from_state, symbol), to_state) in goto_table {
+        println!("{}, {} → {}", from_state, symbol, to_state);
     }
 
     let unique_table = util::to_sorted_vec(&automaton.unique_table(&grammar));
     println!("\nUNIQUE");
-    for ((state_id, symbol), rule_id) in unique_table {
-        println!("{}, {} → {}", state_id, symbol, rule_id);
+    for ((state, symbol), item) in unique_table {
+        println!("{}, {} → {}", state, symbol, item);
+    }
+
+    let parse_table = util::to_sorted_vec(&automaton.parse_table());
+    println!("\nPARSE");
+    for ((from_item, state), to_item) in parse_table {
+        println!("{}, {} → {}", from_item, state, to_item);
     }
 
     if let Some(output) = args.value_of("output") {

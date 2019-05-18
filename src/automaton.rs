@@ -90,6 +90,10 @@ impl Automaton {
         }
     }
 
+    pub fn item(&self, state: usize, item: usize) -> &Item {
+        &self.states[state].items[item]
+    }
+
     pub fn action_table(&self) -> Result<HashMap<(usize, Symbol), Action>, Error> {
         let mut action_table: HashMap<(usize, Symbol), Action> = self
             .state_transitions
@@ -152,6 +156,22 @@ impl Automaton {
             })
             .filter(|(_, items)| items.len() == 1 && items[0].unique)
             .map(|(key, items)| (key, items[0].id))
+            .collect()
+    }
+
+    pub fn parse_table(&self) -> HashMap<(usize, usize), usize> {
+        let items: HashSet<&Item> = self.items.iter().collect();
+
+        self.item_transitions
+            .iter()
+            .map(|ItemTransition { from, to, .. }| {
+                let state = to.0;
+
+                let from = items.get(self.item(from.0, from.1)).unwrap().id;
+                let to = items.get(self.item(to.0, to.1)).unwrap().id;
+
+                ((to, state), from)
+            })
             .collect()
     }
 
@@ -250,11 +270,9 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            Error::ActionConflict(state_id, symbol) => write!(
-                f,
-                "Shift/Reduce conflict in ACTION({}, {})",
-                state_id, symbol
-            ),
+            Error::ActionConflict(state, symbol) => {
+                write!(f, "Shift/Reduce conflict in ACTION({}, {})", state, symbol)
+            }
         }
     }
 }

@@ -111,9 +111,7 @@ impl State {
                             .iter()
                             .filter(|transition| transition.to.1 == item.id)
                             .map(|transition| transition.from.1)
-                            .filter_map(|item_id| {
-                                items.get(item_id).or_else(|| self.items.get(item_id))
-                            })
+                            .filter_map(|id| items.get(id).or_else(|| self.items.get(id)))
                             .collect();
 
                         items[item.id].unique = parents.iter().all(|item| {
