@@ -12,6 +12,7 @@ use crate::symbol::Symbol;
 use crate::util;
 
 use action::Action;
+use item::Item;
 use state::State;
 use transition::{ItemTransition, StateTransition};
 
@@ -19,6 +20,7 @@ pub struct Automaton {
     grammar: Grammar,
     states: Vec<State>,
     state_transitions: Vec<StateTransition>,
+    items: Vec<Item>,
     item_transitions: Vec<ItemTransition>,
 }
 
@@ -26,16 +28,15 @@ impl Automaton {
     pub fn new(grammar: &Grammar) -> Automaton {
         let grammar = grammar.clone();
 
-        let mut states = Vec::new();
-        let mut buffer = HashSet::new();
+        let mut states = HashSet::new();
+        let mut state_transitions = HashSet::new();
+        let mut items = HashSet::new();
+        let mut item_transitions = HashSet::new();
         let mut queue = VecDeque::new();
 
-        let mut state_transitions = HashSet::new();
-        let mut item_transitions = HashSet::new();
-
         let initial_state = State::initial(&grammar);
-        states.push(initial_state.clone());
-        buffer.insert(initial_state.clone());
+        states.insert(initial_state.clone());
+        items.insert(initial_state.items[0].clone());
         enqueue(&mut queue, &initial_state);
 
         while let Some((state, symbol)) = queue.pop_front() {
@@ -43,7 +44,7 @@ impl Automaton {
                 state.derive(&grammar, &symbol, states.len()).unwrap();
             let mut state_transition = StateTransition::new(state.id, next_state.id, symbol);
 
-            if let Some(state) = buffer.get(&next_state) {
+            if let Some(state) = states.get(&next_state) {
                 state_transition.to = state.id;
                 state_transitions.insert(state_transition);
 
@@ -65,17 +66,26 @@ impl Automaton {
             }
 
             next_state.id = states.len();
-            states.push(next_state.clone());
-            buffer.insert(next_state.clone());
+            states.insert(next_state.clone());
             state_transitions.insert(state_transition);
+
+            for item in &next_state.items {
+                if !items.contains(&item) {
+                    let mut item = item.clone();
+                    item.id = items.len();
+                    items.insert(item);
+                }
+            }
+
             item_transitions.extend(transitions);
             enqueue(&mut queue, &next_state);
         }
 
         Automaton {
             grammar,
-            states,
+            states: util::to_sorted_vec(&states),
             state_transitions: util::to_sorted_vec(&state_transitions),
+            items: util::to_sorted_vec(&items),
             item_transitions: util::to_sorted_vec(&item_transitions),
         }
     }
@@ -216,15 +226,19 @@ fn enqueue(queue: &mut VecDeque<(State, Symbol)>, state: &State) {
 
 impl Display for Automaton {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let states = util::to_string(self.states.iter(), "\n");
-        let state_transitions = util::to_string(self.state_transitions.iter(), "\n");
-        let item_transitions = util::to_string(self.item_transitions.iter(), "\n");
+        let states = format!(
+            "States\n{}\n\nState transitions\n{}",
+            util::to_string(self.states.iter(), "\n"),
+            util::to_string(self.state_transitions.iter(), "\n")
+        );
 
-        write!(
-            f,
-            "{}\n\n{}\n\n{}",
-            states, state_transitions, item_transitions
-        )
+        let items = format!(
+            "Items\n{}\n\nItem transitions\n{}",
+            util::to_string(self.items.iter(), "\n"),
+            util::to_string(self.item_transitions.iter(), "\n")
+        );
+
+        write!(f, "{}\n\n{}", states, items)
     }
 }
 

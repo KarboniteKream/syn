@@ -10,7 +10,7 @@ use crate::util;
 use super::item::Item;
 use super::transition::ItemTransition;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Ord, PartialOrd)]
 pub struct State {
     pub id: usize,
     pub items: Vec<Item>,
@@ -160,6 +160,6 @@ impl Hash for State {
 impl Display for State {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let items = util::to_string(self.items.iter(), "; ");
-        write!(f, "{} [{}]", self.id, items)
+        write!(f, "({}) [{}]", self.id, items)
     }
 }

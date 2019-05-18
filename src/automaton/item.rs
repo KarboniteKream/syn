@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 use crate::rule::Rule;
 use crate::symbol::Symbol;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Ord, PartialOrd)]
 pub struct Item {
     pub id: usize,
     pub rule: Rule,
@@ -121,7 +121,8 @@ impl Display for Item {
 
         write!(
             f,
-            "{} → {}, {} {}",
+            "({}) {} → {}, {} {}",
+            self.id,
             self.rule.head,
             body.join(" "),
             self.lookahead,

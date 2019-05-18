@@ -5,7 +5,7 @@ use std::hash::{Hash, Hasher};
 use crate::symbol::Symbol;
 use crate::util;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Ord, PartialOrd)]
 pub struct Rule {
     pub id: usize,
     pub head: Symbol,
