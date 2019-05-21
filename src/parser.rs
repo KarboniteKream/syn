@@ -32,41 +32,47 @@ pub fn parse_file(filename: &Path) -> Result<Grammar, Error> {
             path.into_os_string().into_string().unwrap()
         });
 
-    let rules = from_table(&data, "rules", &Value::as_table)?;
+    let definitions = from_table(&data, "rules", &Value::as_table)?;
 
-    if rules.is_empty() {
+    if definitions.is_empty() {
         return Err(Error::File("No rules defined".to_owned()));
     }
 
     let start_symbol = Symbol::NonTerminal(
         from_table(&data, "start_symbol", &Value::as_str)
-            .unwrap_or_else(|_| rules.keys().next().unwrap())
+            .unwrap_or_else(|_| definitions.keys().next().unwrap())
             .to_owned(),
     );
 
-    let nonterminals: HashSet<&str> = rules.keys().map(String::as_str).collect();
-    let mut grammar = Grammar::new(name, description, start_symbol);
-    let mut rule_id = 1;
+    let nonterminals: HashSet<&str> = definitions.keys().map(String::as_str).collect();
 
-    for (name, rules) in rules {
-        let symbol = Symbol::NonTerminal(name.clone());
-        let rules = match rules.as_array() {
+    let mut symbols = vec![Symbol::Start, Symbol::End, Symbol::Null];
+    let mut rules = vec![Rule::new(
+        0,
+        Symbol::Start,
+        vec![Symbol::End, start_symbol.clone(), Symbol::End],
+    )];
+
+    for (name, definitions) in definitions {
+        let definitions = match definitions.as_array() {
             Some(value) => value.clone(),
-            None => vec![rules.clone()],
+            None => vec![definitions.clone()],
         };
 
-        let mut list: Vec<Rule> = Vec::new();
+        let symbol = Symbol::NonTerminal(name.clone());
+        symbols.push(symbol.clone());
 
-        for rule in rules {
-            let rule = match rule.as_str() {
+        for definition in definitions {
+            let definition = match definition.as_str() {
                 Some(value) => value,
                 None => return Err(Error::Rule(name.to_owned())),
             };
 
-            let body = if rule.is_empty() {
+            let body = if definition.is_empty() {
                 vec![Symbol::Null]
             } else {
-                rule.split_whitespace()
+                definition
+                    .split_whitespace()
                     .map(|name| {
                         if nonterminals.contains(name) {
                             Symbol::NonTerminal(name.to_owned())
@@ -77,14 +83,17 @@ pub fn parse_file(filename: &Path) -> Result<Grammar, Error> {
                     .collect()
             };
 
-            list.push(Rule::new(rule_id, symbol.clone(), body));
-            rule_id += 1;
+            rules.push(Rule::new(rules.len(), symbol.clone(), body));
         }
-
-        grammar.add_rules(&symbol, &list);
     }
 
-    Ok(grammar)
+    Ok(Grammar::new(
+        name,
+        description,
+        symbols,
+        rules,
+        start_symbol,
+    ))
 }
 
 fn from_table<'a, T: ?Sized>(

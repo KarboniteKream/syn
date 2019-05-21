@@ -85,7 +85,7 @@ impl State {
             let tail = item.tail(grammar.rule(item.rule));
             let lookaheads: Vec<Symbol> = grammar.first_sequence(&tail);
 
-            for rule in &grammar.rules[&head] {
+            for rule in grammar.rules(&head) {
                 for lookahead in lookaheads.clone() {
                     let rule = Rule::new(rule.id, head.clone(), rule.body.clone());
                     let mut next_item = Item::new(items.len(), &rule, lookahead, item.unique);

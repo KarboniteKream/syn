@@ -11,62 +11,81 @@ use crate::util;
 pub struct Grammar {
     pub name: String,
     description: String,
+    symbols: Vec<Symbol>,
     pub start_symbol: Symbol,
-    all_rules: Vec<Rule>,
-    pub rules: HashMap<Symbol, Vec<Rule>>,
+    rules: Vec<Rule>,
+    symbol_rules: HashMap<Symbol, Vec<usize>>,
     first: RefCell<HashMap<Symbol, Vec<Symbol>>>,
 }
 
 impl Grammar {
-    pub fn new(name: String, description: String, start_symbol: Symbol) -> Grammar {
-        let rule = Rule::new(
-            0,
-            Symbol::Start,
-            vec![Symbol::End, start_symbol.clone(), Symbol::End],
-        );
+    pub fn new(
+        name: String,
+        description: String,
+        symbols: Vec<Symbol>,
+        rules: Vec<Rule>,
+        start_symbol: Symbol,
+    ) -> Grammar {
+        let symbol_rules = rules
+            .iter()
+            .enumerate()
+            .fold(HashMap::new(), |mut acc, (id, rule)| {
+                acc.entry(rule.head.clone())
+                    .or_insert_with(Vec::new)
+                    .push(id);
+
+                acc
+            });
 
         Grammar {
             name,
             description,
+            symbols,
             start_symbol,
-            all_rules: vec![rule],
-            rules: HashMap::new(),
+            rules,
+            symbol_rules,
             first: RefCell::new(HashMap::new()),
         }
     }
 
-    pub fn rule(&self, id: usize) -> &Rule {
-        &self.all_rules[id]
+    pub fn rules(&self, symbol: &Symbol) -> Vec<&Rule> {
+        self.symbol_rules[symbol]
+            .iter()
+            .map(|id| self.rule(*id))
+            .collect()
     }
 
-    pub fn add_rules(&mut self, symbol: &Symbol, rules: &[Rule]) {
-        self.all_rules.extend(rules.to_vec());
-        self.rules.insert(symbol.clone(), rules.to_vec());
+    pub fn rule(&self, id: usize) -> &Rule {
+        &self.rules[id]
     }
 
     pub fn verify(&self) -> Result<(), Error> {
-        if !self.rules.contains_key(&self.start_symbol) {
+        if !self.symbol_rules.contains_key(&self.start_symbol) {
             return Err(Error::NoSymbol(self.start_symbol.clone()));
         }
 
         let mut nonterminals: HashSet<&Symbol> =
-            self.all_rules.iter().flat_map(Rule::nonterminals).collect();
+            self.rules.iter().flat_map(Rule::nonterminals).collect();
 
         nonterminals.insert(&self.start_symbol);
 
-        for symbol in self.rules.keys() {
-            if !nonterminals.contains(symbol) {
+        for symbol in self.symbol_rules.keys() {
+            if !symbol.is_builtin() && !nonterminals.contains(symbol) {
                 return Err(Error::Unreachable(symbol.clone()));
             }
         }
 
-        for (symbol, rules) in &self.rules {
-            if !rules.is_empty() && rules.iter().all(|rule| rule.first() == symbol) {
+        for (symbol, rules) in &self.symbol_rules {
+            if symbol.is_builtin() || rules.is_empty() {
+                continue;
+            }
+
+            if rules.iter().all(|id| self.rule(*id).first() == symbol) {
                 return Err(Error::LeftRecursive(symbol.clone()));
             }
         }
 
-        for rule in &self.all_rules {
+        for rule in &self.rules {
             if rule.body.iter().all(Symbol::is_terminal) {
                 nonterminals.remove(&rule.head);
             }
@@ -76,9 +95,9 @@ impl Grammar {
             let realizable: HashSet<&Symbol> = nonterminals
                 .iter()
                 .filter(|symbol| {
-                    self.rules[symbol]
+                    self.symbol_rules[symbol]
                         .iter()
-                        .any(|rule| rule.nonterminals().is_disjoint(&nonterminals))
+                        .any(|id| self.rule(*id).nonterminals().is_disjoint(&nonterminals))
                 })
                 .cloned()
                 .collect();
@@ -112,12 +131,14 @@ impl Grammar {
             return self.cache_first(symbol, &buffer);
         }
 
-        if !self.rules.contains_key(symbol) {
+        if !self.symbol_rules.contains_key(symbol) {
             return Vec::new();
         }
 
-        let mut rules: Vec<(&Rule, usize)> =
-            self.rules[symbol].iter().map(|rule| (rule, 0)).collect();
+        let mut rules: Vec<(&Rule, usize)> = self.symbol_rules[symbol]
+            .iter()
+            .map(|id| (self.rule(*id), 0))
+            .collect();
 
         loop {
             for (rule, idx) in &mut rules {
@@ -183,7 +204,7 @@ impl Grammar {
 
 impl Display for Grammar {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let rules = util::to_string(self.all_rules.iter(), "\n");
+        let rules = util::to_string(self.rules.iter(), "\n");
         write!(f, "{} ({})\n{}", self.name, self.description, rules)
     }
 }

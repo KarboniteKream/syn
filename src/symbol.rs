@@ -20,6 +20,13 @@ impl Symbol {
     pub fn is_nonterminal(&self) -> bool {
         !self.is_terminal()
     }
+
+    pub fn is_builtin(&self) -> bool {
+        match self {
+            Symbol::NonTerminal(_) | Symbol::Terminal(_) => false,
+            _ => true,
+        }
+    }
 }
 
 impl Display for Symbol {
