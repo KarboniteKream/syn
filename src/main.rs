@@ -10,6 +10,7 @@ mod symbol;
 mod util;
 
 use automaton::Automaton;
+use util::AsString;
 
 fn main() {
     let args = util::parse_args();
@@ -38,7 +39,7 @@ fn main() {
     };
 
     println!("GRAMMAR\n{}", grammar);
-    println!("\nAUTOMATON\n{}", automaton);
+    println!("\nAUTOMATON\n{}", automaton.as_string(&grammar));
 
     println!("\nACTION");
     for ((state, symbol), action) in action_table {
@@ -64,7 +65,7 @@ fn main() {
     }
 
     if let Some(output) = args.value_of("output") {
-        let contents: String = automaton.to_dot();
+        let contents: String = automaton.to_dot(&grammar);
 
         if let Err(error) = fs::write(Path::new(output), contents) {
             eprintln!("Unable to save to file '{}': {}", output, error);

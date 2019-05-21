@@ -4,28 +4,21 @@ use std::fmt::{self, Display, Formatter};
 pub enum Symbol {
     NonTerminal(String),
     Terminal(String),
+    Start,
+    End,
     Null,
-    Delimiter,
 }
 
 impl Symbol {
-    pub fn name(&self) -> &str {
+    pub fn is_terminal(&self) -> bool {
         match self {
-            Symbol::NonTerminal(name) | Symbol::Terminal(name) => name.as_str(),
-            Symbol::Null => "ϵ",
-            Symbol::Delimiter => "$",
+            Symbol::NonTerminal(_) => false,
+            _ => true,
         }
     }
 
     pub fn is_nonterminal(&self) -> bool {
-        match self {
-            Symbol::NonTerminal(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_terminal(&self) -> bool {
-        !self.is_nonterminal()
+        !self.is_terminal()
     }
 }
 
@@ -40,8 +33,9 @@ impl Display for Symbol {
                     write!(f, "'{}'", name)
                 }
             }
+            Symbol::Start => write!(f, "^"),
+            Symbol::End => write!(f, "$"),
             Symbol::Null => write!(f, "ϵ"),
-            Symbol::Delimiter => write!(f, "$"),
         }
     }
 }

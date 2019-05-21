@@ -19,14 +19,24 @@ pub struct Grammar {
 
 impl Grammar {
     pub fn new(name: String, description: String, start_symbol: Symbol) -> Grammar {
+        let rule = Rule::new(
+            0,
+            Symbol::Start,
+            vec![Symbol::End, start_symbol.clone(), Symbol::End],
+        );
+
         Grammar {
             name,
             description,
             start_symbol,
-            all_rules: Vec::new(),
+            all_rules: vec![rule],
             rules: HashMap::new(),
             first: RefCell::new(HashMap::new()),
         }
+    }
+
+    pub fn rule(&self, id: usize) -> &Rule {
+        &self.all_rules[id]
     }
 
     pub fn add_rules(&mut self, symbol: &Symbol, rules: &[Rule]) {

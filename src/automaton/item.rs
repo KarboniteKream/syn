@@ -1,36 +1,46 @@
-use std::fmt::{self, Display, Formatter};
 use std::hash::{Hash, Hasher};
 
+use crate::grammar::Grammar;
 use crate::rule::Rule;
 use crate::symbol::Symbol;
+use crate::util::AsString;
 
 #[derive(Clone, Debug, Ord, PartialOrd)]
 pub struct Item {
     pub id: usize,
-    pub rule: Rule,
+    pub rule: usize,
     pub idx: usize,
+    pub head: Option<Symbol>,
     pub lookahead: Symbol,
     pub unique: bool,
 }
 
 impl Item {
-    pub fn new(id: usize, rule: Rule, lookahead: Symbol, unique: bool) -> Item {
+    pub fn new(id: usize, rule: &Rule, lookahead: Symbol, unique: bool) -> Item {
         Item {
             id,
-            rule,
+            rule: rule.id,
             idx: 0,
+            head: Some(rule.body[0].clone()),
             lookahead,
             unique,
         }
     }
 
-    pub fn head(&self) -> Option<&Symbol> {
-        self.rule.body.get(self.idx)
+    pub fn pass(&mut self, rule: &Rule) {
+        if self.idx < rule.body.len() {
+            self.idx += 1;
+
+            self.head = match rule.body.get(self.idx) {
+                Some(head) => Some(head.clone()),
+                None => None,
+            }
+        }
     }
 
-    pub fn tail(&self) -> Vec<Symbol> {
-        let mut tail = if self.head().is_some() {
-            self.rule.body[self.idx + 1..].to_vec()
+    pub fn tail(&self, rule: &Rule) -> Vec<Symbol> {
+        let mut tail = if self.head.is_some() {
+            rule.body[self.idx + 1..].to_vec()
         } else {
             Vec::new()
         };
@@ -39,43 +49,37 @@ impl Item {
         tail
     }
 
-    pub fn pass(&mut self) {
-        if self.idx < self.rule.body.len() {
-            self.idx += 1;
-        }
-    }
-
-    pub fn follow(&self) -> Vec<Symbol> {
-        let mut follow = self.rule.body[self.idx..].to_vec();
+    pub fn follow(&self, rule: &Rule) -> Vec<Symbol> {
+        let mut follow = rule.body[self.idx..].to_vec();
         follow.push(self.lookahead.clone());
         follow
     }
 
     pub fn at_nonterminal(&self) -> bool {
-        match self.head() {
+        match &self.head {
             Some(head) => head.is_nonterminal(),
             None => false,
         }
     }
 
     pub fn can_reduce(&self) -> bool {
-        if self.rule.id == 0 {
+        if self.rule == 0 {
             return false;
         }
 
-        match self.head() {
+        match &self.head {
             Some(head) => *head == Symbol::Null,
             None => true,
         }
     }
 
     pub fn can_accept(&self) -> bool {
-        if self.rule.id != 0 || self.idx == 0 {
+        if self.rule != 0 || self.idx == 0 {
             return false;
         }
 
-        match self.head() {
-            Some(head) => *head == Symbol::Delimiter,
+        match &self.head {
+            Some(head) => *head == Symbol::End,
             None => false,
         }
     }
@@ -101,14 +105,15 @@ impl Hash for Item {
     }
 }
 
-impl Display for Item {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+impl AsString for Item {
+    fn as_string(&self, grammar: &Grammar) -> String {
+        let rule = grammar.rule(self.rule);
         let dot = String::from("·");
 
-        let mut body = if self.rule.body == vec![Symbol::Null] {
+        let mut body = if rule.body == vec![Symbol::Null] {
             Vec::new()
         } else {
-            self.rule.body.iter().map(Symbol::to_string).collect()
+            rule.body.iter().map(Symbol::to_string).collect()
         };
 
         if let Some(symbol) = body.get_mut(self.idx) {
@@ -119,11 +124,10 @@ impl Display for Item {
 
         let unique = if self.unique { "○" } else { "×" };
 
-        write!(
-            f,
+        format!(
             "({}) {} → {}, {} {}",
             self.id,
-            self.rule.head,
+            rule.head,
             body.join(" "),
             self.lookahead,
             unique

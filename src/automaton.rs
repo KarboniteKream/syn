@@ -9,7 +9,7 @@ mod transition;
 
 use crate::grammar::Grammar;
 use crate::symbol::Symbol;
-use crate::util;
+use crate::util::{self, AsString};
 
 use action::Action;
 use item::Item;
@@ -41,7 +41,7 @@ impl Automaton {
 
         while let Some((state, symbol)) = queue.pop_front() {
             let (mut next_state, transitions) =
-                state.derive(&grammar, &symbol, states.len()).unwrap();
+                state.derive(&symbol, &grammar, states.len()).unwrap();
             let mut state_transition = StateTransition::new(state.id, next_state.id, symbol);
 
             if let Some(state) = states.get(&next_state) {
@@ -108,7 +108,7 @@ impl Automaton {
         for state in &self.states {
             for item in &state.items {
                 if item.can_accept() {
-                    action_table.insert((state.id, Symbol::Delimiter), Action::Accept);
+                    action_table.insert((state.id, Symbol::End), Action::Accept);
                     continue;
                 }
 
@@ -122,7 +122,7 @@ impl Automaton {
                     return Err(Error::ActionConflict(key.0, key.1));
                 }
 
-                action_table.insert(key, Action::Reduce(item.rule.id));
+                action_table.insert(key, Action::Reduce(item.rule));
             }
         }
 
@@ -145,7 +145,9 @@ impl Automaton {
             .iter()
             .flat_map(|state| {
                 state.items.iter().fold(HashMap::new(), |mut acc, item| {
-                    for symbol in grammar.first_sequence(&item.follow()) {
+                    let follow = item.follow(grammar.rule(item.rule));
+
+                    for symbol in grammar.first_sequence(&follow) {
                         acc.entry((state.id, symbol))
                             .or_insert_with(Vec::new)
                             .push(item);
@@ -175,7 +177,7 @@ impl Automaton {
             .collect()
     }
 
-    pub fn to_dot(&self) -> String {
+    pub fn to_dot(&self, grammar: &Grammar) -> String {
         let states = self
             .states
             .iter()
@@ -184,7 +186,7 @@ impl Automaton {
                     .items
                     .iter()
                     .map(|item| {
-                        let label = item.to_string().replace("\"", "\\\"");
+                        let label = item.as_string(grammar).replace("\"", "\\\"");
                         format!("<{}> {}", item.id, label)
                     })
                     .collect::<Vec<String>>()
@@ -239,26 +241,26 @@ impl Automaton {
 }
 
 fn enqueue(queue: &mut VecDeque<(State, Symbol)>, state: &State) {
-    for transition in state.transitions() {
-        queue.push_back((state.clone(), transition.clone()));
+    for symbol in state.transitions() {
+        queue.push_back((state.clone(), symbol.clone()));
     }
 }
 
-impl Display for Automaton {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+impl AsString for Automaton {
+    fn as_string(&self, grammar: &Grammar) -> String {
         let states = format!(
             "States\n{}\n\nState transitions\n{}",
-            util::to_string(self.states.iter(), "\n"),
+            util::as_string(self.states.iter(), grammar, "\n"),
             util::to_string(self.state_transitions.iter(), "\n")
         );
 
         let items = format!(
             "Items\n{}\n\nItem transitions\n{}",
-            util::to_string(self.items.iter(), "\n"),
+            util::as_string(self.items.iter(), grammar, "\n"),
             util::to_string(self.item_transitions.iter(), "\n")
         );
 
-        write!(f, "{}\n\n{}", states, items)
+        format!("{}\n\n{}", states, items)
     }
 }
 
