@@ -17,7 +17,7 @@ use state::State;
 use transition::{ItemTransition, StateTransition};
 
 pub struct Automaton {
-    grammar: Grammar,
+    pub grammar: Grammar,
     states: Vec<State>,
     state_transitions: Vec<StateTransition>,
     items: Vec<Item>,
@@ -25,9 +25,7 @@ pub struct Automaton {
 }
 
 impl Automaton {
-    pub fn new(grammar: &Grammar) -> Automaton {
-        let grammar = grammar.clone();
-
+    pub fn new(grammar: Grammar) -> Automaton {
         let mut states = HashSet::new();
         let mut state_transitions = HashSet::new();
         let mut items = HashSet::new();
@@ -41,16 +39,14 @@ impl Automaton {
 
         while let Some((state, symbol)) = queue.pop_front() {
             let (mut next_state, transitions) =
-                state.derive(&symbol, &grammar, states.len()).unwrap();
+                state.derive(symbol, &grammar, states.len()).unwrap();
             let mut state_transition = StateTransition::new(state.id, next_state.id, symbol);
 
             if let Some(state) = states.get(&next_state) {
                 state_transition.to = state.id;
                 state_transitions.insert(state_transition);
 
-                for transition in transitions {
-                    let mut transition = transition.clone();
-
+                for mut transition in transitions {
                     if transition.from.0 == next_state.id {
                         transition.from.0 = state.id;
                     }
@@ -94,12 +90,12 @@ impl Automaton {
         &self.states[state].items[item]
     }
 
-    pub fn action_table(&self) -> Result<HashMap<(usize, Symbol), Action>, Error> {
-        let mut action_table: HashMap<(usize, Symbol), Action> = self
+    pub fn action_table(&self) -> Result<HashMap<(usize, usize), Action>, Error> {
+        let mut action_table: HashMap<(usize, usize), Action> = self
             .state_transitions
             .iter()
-            .filter_map(|transition| match transition.symbol {
-                Symbol::Terminal(_) => Some(transition.clone()),
+            .filter_map(|transition| match self.grammar.symbol(transition.symbol) {
+                Symbol::Terminal(..) => Some(*transition),
                 _ => None,
             })
             .map(|StateTransition { from, to, symbol }| ((from, symbol), Action::Shift(to)))
@@ -108,7 +104,7 @@ impl Automaton {
         for state in &self.states {
             for item in &state.items {
                 if item.can_accept() {
-                    action_table.insert((state.id, Symbol::End), Action::Accept);
+                    action_table.insert((state.id, Symbol::End.id()), Action::Accept);
                     continue;
                 }
 
@@ -116,10 +112,11 @@ impl Automaton {
                     continue;
                 }
 
-                let key = (state.id, item.lookahead.clone());
+                let key = (state.id, item.lookahead);
 
                 if action_table.contains_key(&key) {
-                    return Err(Error::ActionConflict(key.0, key.1));
+                    let symbol = self.grammar.symbol(key.1).clone();
+                    return Err(Error::ActionConflict(key.0, symbol));
                 }
 
                 action_table.insert(key, Action::Reduce(item.rule));
@@ -129,25 +126,25 @@ impl Automaton {
         Ok(action_table)
     }
 
-    pub fn goto_table(&self) -> HashMap<(usize, Symbol), usize> {
+    pub fn goto_table(&self) -> HashMap<(usize, usize), usize> {
         self.state_transitions
             .iter()
-            .filter_map(|transition| match transition.symbol {
-                Symbol::NonTerminal(_) => Some(transition.clone()),
+            .filter_map(|transition| match self.grammar.symbol(transition.symbol) {
+                Symbol::NonTerminal(..) => Some(*transition),
                 _ => None,
             })
             .map(|StateTransition { from, to, symbol }| ((from, symbol), to))
             .collect()
     }
 
-    pub fn unique_table(&self, grammar: &Grammar) -> HashMap<(usize, Symbol), usize> {
+    pub fn unique_table(&self) -> HashMap<(usize, usize), usize> {
         self.states
             .iter()
             .flat_map(|state| {
                 state.items.iter().fold(HashMap::new(), |mut acc, item| {
-                    let follow = item.follow(grammar.rule(item.rule));
+                    let follow = item.follow(self.grammar.rule(item.rule));
 
-                    for symbol in grammar.first_sequence(&follow) {
+                    for symbol in self.grammar.first_sequence(&follow) {
                         acc.entry((state.id, symbol))
                             .or_insert_with(Vec::new)
                             .push(item);
@@ -177,7 +174,7 @@ impl Automaton {
             .collect()
     }
 
-    pub fn to_dot(&self, grammar: &Grammar) -> String {
+    pub fn to_dot(&self) -> String {
         let states = self
             .states
             .iter()
@@ -186,7 +183,7 @@ impl Automaton {
                     .items
                     .iter()
                     .map(|item| {
-                        let label = item.as_string(grammar).replace("\"", "\\\"");
+                        let label = item.string(&self.grammar).replace("\"", "\\\"");
                         format!("<{}> {}", item.id, label)
                     })
                     .collect::<Vec<String>>()
@@ -204,7 +201,11 @@ impl Automaton {
             .state_transitions
             .iter()
             .map(|StateTransition { from, to, symbol }| {
-                let label = symbol.to_string().replace("\"", "\\\"");
+                let label = self
+                    .grammar
+                    .symbol(*symbol)
+                    .to_string()
+                    .replace("\"", "\\\"");
                 format!("    {} -> {} [label=\"{}\"];", from, to, label)
             })
             .collect::<Vec<String>>()
@@ -214,15 +215,14 @@ impl Automaton {
             .item_transitions
             .iter()
             .map(|ItemTransition { from, to, symbol }| {
-                let color = match symbol {
-                    Symbol::Null => {
-                        if from.1 < to.1 {
-                            "crimson"
-                        } else {
-                            "forestgreen"
-                        }
+                let color = if *symbol == Symbol::Null.id() {
+                    if from.1 < to.1 {
+                        "crimson"
+                    } else {
+                        "forestgreen"
                     }
-                    _ => "royalblue",
+                } else {
+                    "royalblue"
                 };
 
                 format!(
@@ -240,27 +240,27 @@ impl Automaton {
     }
 }
 
-fn enqueue(queue: &mut VecDeque<(State, Symbol)>, state: &State) {
+fn enqueue(queue: &mut VecDeque<(State, usize)>, state: &State) {
     for symbol in state.transitions() {
-        queue.push_back((state.clone(), symbol.clone()));
+        queue.push_back((state.clone(), symbol));
     }
 }
 
-impl AsString for Automaton {
-    fn as_string(&self, grammar: &Grammar) -> String {
+impl Display for Automaton {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let states = format!(
             "States\n{}\n\nState transitions\n{}",
-            util::as_string(self.states.iter(), grammar, "\n"),
-            util::to_string(self.state_transitions.iter(), "\n")
+            util::as_string(self.states.iter(), &self.grammar, "\n"),
+            util::as_string(self.state_transitions.iter(), &self.grammar, "\n")
         );
 
         let items = format!(
             "Items\n{}\n\nItem transitions\n{}",
-            util::as_string(self.items.iter(), grammar, "\n"),
-            util::to_string(self.item_transitions.iter(), "\n")
+            util::as_string(self.items.iter(), &self.grammar, "\n"),
+            util::as_string(self.item_transitions.iter(), &self.grammar, "\n")
         );
 
-        format!("{}\n\n{}", states, items)
+        write!(f, "{}\n\n{}", states, items)
     }
 }
 

@@ -10,7 +10,6 @@ mod symbol;
 mod util;
 
 use automaton::Automaton;
-use util::AsString;
 
 fn main() {
     let args = util::parse_args();
@@ -29,7 +28,11 @@ fn main() {
         process::exit(1);
     }
 
-    let automaton = Automaton::new(&grammar);
+    println!("GRAMMAR\n{}", grammar);
+    let automaton = Automaton::new(grammar);
+    println!("\nAUTOMATON\n{}", automaton);
+    let grammar = &automaton.grammar;
+
     let action_table = match automaton.action_table() {
         Ok(action_table) => util::to_sorted_vec(&action_table),
         Err(error) => {
@@ -38,24 +41,21 @@ fn main() {
         }
     };
 
-    println!("GRAMMAR\n{}", grammar);
-    println!("\nAUTOMATON\n{}", automaton.as_string(&grammar));
-
     println!("\nACTION");
     for ((state, symbol), action) in action_table {
-        println!("{}, {} → {}", state, symbol, action);
+        println!("{}, {} → {}", state, grammar.symbol(symbol), action);
     }
 
     let goto_table = util::to_sorted_vec(&automaton.goto_table());
     println!("\nGOTO");
-    for ((from_state, symbol), to_state) in goto_table {
-        println!("{}, {} → {}", from_state, symbol, to_state);
+    for ((from, symbol), to) in goto_table {
+        println!("{}, {} → {}", from, grammar.symbol(symbol), to);
     }
 
-    let unique_table = util::to_sorted_vec(&automaton.unique_table(&grammar));
+    let unique_table = util::to_sorted_vec(&automaton.unique_table());
     println!("\nUNIQUE");
     for ((state, symbol), item) in unique_table {
-        println!("{}, {} → {}", state, symbol, item);
+        println!("{}, {} → {}", state, grammar.symbol(symbol), item);
     }
 
     let parse_table = util::to_sorted_vec(&automaton.parse_table());
@@ -65,7 +65,7 @@ fn main() {
     }
 
     if let Some(output) = args.value_of("output") {
-        let contents: String = automaton.to_dot(&grammar);
+        let contents: String = automaton.to_dot();
 
         if let Err(error) = fs::write(Path::new(output), contents) {
             eprintln!("Unable to save to file '{}': {}", output, error);

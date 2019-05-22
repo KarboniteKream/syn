@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::error;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
@@ -33,34 +33,38 @@ pub fn parse_file(filename: &Path) -> Result<Grammar, Error> {
         });
 
     let definitions = from_table(&data, "rules", &Value::as_table)?;
+    let nonterminals: HashSet<&str> = definitions.keys().map(String::as_str).collect();
 
     if definitions.is_empty() {
         return Err(Error::File("No rules defined".to_owned()));
     }
 
-    let start_symbol = Symbol::NonTerminal(
+    let mut symbols = Symbol::builtin();
+    let start_symbol = symbols.len();
+
+    symbols.push(Symbol::NonTerminal(
+        start_symbol,
         from_table(&data, "start_symbol", &Value::as_str)
             .unwrap_or_else(|_| definitions.keys().next().unwrap())
             .to_owned(),
-    );
+    ));
 
-    let nonterminals: HashSet<&str> = definitions.keys().map(String::as_str).collect();
-
-    let mut symbols = vec![Symbol::Start, Symbol::End, Symbol::Null];
     let mut rules = vec![Rule::new(
         0,
-        Symbol::Start,
-        vec![Symbol::End, start_symbol.clone(), Symbol::End],
+        Symbol::Start.id(),
+        vec![Symbol::End.id(), start_symbol, Symbol::End.id()],
     )];
+
+    let mut names: HashMap<String, usize> = symbols
+        .iter()
+        .map(|symbol| (symbol.name(), symbol.id()))
+        .collect();
 
     for (name, definitions) in definitions {
         let definitions = match definitions.as_array() {
             Some(value) => value.clone(),
             None => vec![definitions.clone()],
         };
-
-        let symbol = Symbol::NonTerminal(name.clone());
-        symbols.push(symbol.clone());
 
         for definition in definitions {
             let definition = match definition.as_str() {
@@ -69,21 +73,19 @@ pub fn parse_file(filename: &Path) -> Result<Grammar, Error> {
             };
 
             let body = if definition.is_empty() {
-                vec![Symbol::Null]
+                vec![Symbol::Null.id()]
             } else {
                 definition
                     .split_whitespace()
                     .map(|name| {
-                        if nonterminals.contains(name) {
-                            Symbol::NonTerminal(name.to_owned())
-                        } else {
-                            Symbol::Terminal(name.to_owned())
-                        }
+                        let is_terminal = !nonterminals.contains(name);
+                        get_symbol(name, is_terminal, &mut names, &mut symbols)
                     })
                     .collect()
             };
 
-            rules.push(Rule::new(rules.len(), symbol.clone(), body));
+            let head = get_symbol(name, false, &mut names, &mut symbols);
+            rules.push(Rule::new(rules.len(), head, body));
         }
     }
 
@@ -105,6 +107,29 @@ fn from_table<'a, T: ?Sized>(
         Some(value) => Ok(value),
         None => Err(Error::Key(key.to_owned())),
     }
+}
+
+fn get_symbol(
+    name: &str,
+    is_terminal: bool,
+    names: &mut HashMap<String, usize>,
+    symbols: &mut Vec<Symbol>,
+) -> usize {
+    if let Some(id) = names.get(name) {
+        return *id;
+    }
+
+    let id = symbols.len();
+    let name = name.to_owned();
+    names.insert(name.clone(), id);
+
+    symbols.push(if is_terminal {
+        Symbol::Terminal(id, name)
+    } else {
+        Symbol::NonTerminal(id, name)
+    });
+
+    id
 }
 
 #[derive(Debug)]

@@ -1,16 +1,14 @@
-use std::fmt::Display;
-
 use clap::{crate_authors, crate_name, crate_version, App, Arg, ArgMatches};
 
 use crate::grammar::Grammar;
 
 pub trait AsString {
-    fn as_string(&self, grammar: &Grammar) -> String;
+    fn string(&self, grammar: &Grammar) -> String;
 }
 
 impl<T: AsString> AsString for &T {
-    fn as_string(&self, grammar: &Grammar) -> String {
-        AsString::as_string(&**self, grammar)
+    fn string(&self, grammar: &Grammar) -> String {
+        AsString::string(&**self, grammar)
     }
 }
 
@@ -45,24 +43,13 @@ where
     vec
 }
 
-pub fn to_string<I, T>(iterator: I, separator: &str) -> String
-where
-    I: Iterator<Item = T>,
-    T: Display,
-{
-    iterator
-        .map(|item| item.to_string())
-        .collect::<Vec<String>>()
-        .join(separator)
-}
-
 pub fn as_string<I, T>(iterator: I, grammar: &Grammar, separator: &str) -> String
 where
     I: Iterator<Item = T>,
     T: AsString,
 {
     iterator
-        .map(|item| item.as_string(grammar))
+        .map(|item| item.string(grammar))
         .collect::<Vec<String>>()
         .join(separator)
 }

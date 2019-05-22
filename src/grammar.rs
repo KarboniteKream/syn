@@ -11,11 +11,11 @@ use crate::util;
 pub struct Grammar {
     pub name: String,
     description: String,
-    symbols: Vec<Symbol>,
-    pub start_symbol: Symbol,
+    pub symbols: Vec<Symbol>,
+    start_symbol: usize,
     rules: Vec<Rule>,
-    symbol_rules: HashMap<Symbol, Vec<usize>>,
-    first: RefCell<HashMap<Symbol, Vec<Symbol>>>,
+    symbol_rules: HashMap<usize, Vec<usize>>,
+    first: RefCell<HashMap<usize, Vec<usize>>>,
 }
 
 impl Grammar {
@@ -24,16 +24,13 @@ impl Grammar {
         description: String,
         symbols: Vec<Symbol>,
         rules: Vec<Rule>,
-        start_symbol: Symbol,
+        start_symbol: usize,
     ) -> Grammar {
         let symbol_rules = rules
             .iter()
             .enumerate()
             .fold(HashMap::new(), |mut acc, (id, rule)| {
-                acc.entry(rule.head.clone())
-                    .or_insert_with(Vec::new)
-                    .push(id);
-
+                acc.entry(rule.head).or_insert_with(Vec::new).push(id);
                 acc
             });
 
@@ -48,56 +45,68 @@ impl Grammar {
         }
     }
 
-    pub fn rules(&self, symbol: &Symbol) -> Vec<&Rule> {
-        self.symbol_rules[symbol]
-            .iter()
-            .map(|id| self.rule(*id))
-            .collect()
+    pub fn symbol(&self, id: usize) -> &Symbol {
+        &self.symbols[id]
     }
 
     pub fn rule(&self, id: usize) -> &Rule {
         &self.rules[id]
     }
 
+    pub fn rules(&self, symbol: usize) -> Vec<&Rule> {
+        self.symbol_rules[&symbol]
+            .iter()
+            .map(|id| self.rule(*id))
+            .collect()
+    }
+
     pub fn verify(&self) -> Result<(), Error> {
         if !self.symbol_rules.contains_key(&self.start_symbol) {
-            return Err(Error::NoSymbol(self.start_symbol.clone()));
+            return Err(Error::NoSymbol(self.symbol(self.start_symbol).clone()));
         }
 
-        let mut nonterminals: HashSet<&Symbol> =
-            self.rules.iter().flat_map(Rule::nonterminals).collect();
+        let mut nonterminals: HashSet<usize> = self
+            .rules
+            .iter()
+            .flat_map(|rule| rule.nonterminals(&self.symbols))
+            .collect();
+        nonterminals.insert(self.start_symbol);
 
-        nonterminals.insert(&self.start_symbol);
+        for id in self.symbol_rules.keys() {
+            let symbol = self.symbol(*id);
 
-        for symbol in self.symbol_rules.keys() {
-            if !symbol.is_builtin() && !nonterminals.contains(symbol) {
+            if !symbol.is_builtin() && !nonterminals.contains(id) {
                 return Err(Error::Unreachable(symbol.clone()));
             }
         }
 
-        for (symbol, rules) in &self.symbol_rules {
+        for (id, rules) in &self.symbol_rules {
+            let symbol = self.symbol(*id);
+
             if symbol.is_builtin() || rules.is_empty() {
                 continue;
             }
 
-            if rules.iter().all(|id| self.rule(*id).first() == symbol) {
+            if rules.iter().all(|rule| self.rule(*rule).body[0] == *id) {
                 return Err(Error::LeftRecursive(symbol.clone()));
             }
         }
 
         for rule in &self.rules {
-            if rule.body.iter().all(Symbol::is_terminal) {
+            if rule.body.iter().all(|id| self.symbol(*id).is_terminal()) {
                 nonterminals.remove(&rule.head);
             }
         }
 
         loop {
-            let realizable: HashSet<&Symbol> = nonterminals
+            let realizable: HashSet<usize> = nonterminals
                 .iter()
                 .filter(|symbol| {
-                    self.symbol_rules[symbol]
-                        .iter()
-                        .any(|id| self.rule(*id).nonterminals().is_disjoint(&nonterminals))
+                    self.symbol_rules[symbol].iter().any(|id| {
+                        self.rule(*id)
+                            .nonterminals(&self.symbols)
+                            .is_disjoint(&nonterminals)
+                    })
                 })
                 .cloned()
                 .collect();
@@ -107,57 +116,58 @@ impl Grammar {
             }
 
             for symbol in realizable {
-                nonterminals.remove(symbol);
+                nonterminals.remove(&symbol);
             }
         }
 
         if !nonterminals.is_empty() {
             let not_realizable = util::to_sorted_vec(&nonterminals);
-            return Err(Error::NotRealizable(not_realizable[0].clone()));
+            return Err(Error::NotRealizable(self.symbol(not_realizable[0]).clone()));
         }
 
         Ok(())
     }
 
-    pub fn first(&self, symbol: &Symbol) -> Vec<Symbol> {
-        if let Some(first) = self.first.borrow().get(symbol) {
+    pub fn first(&self, symbol: usize) -> Vec<usize> {
+        if let Some(first) = self.first.borrow().get(&symbol) {
             return first.clone();
         }
 
         let mut buffer = HashSet::new();
 
-        if symbol.is_terminal() {
-            buffer.insert(symbol.clone());
+        if self.symbol(symbol).is_terminal() {
+            buffer.insert(symbol);
             return self.cache_first(symbol, &buffer);
         }
 
-        if !self.symbol_rules.contains_key(symbol) {
+        if !self.symbol_rules.contains_key(&symbol) {
             return Vec::new();
         }
 
-        let mut rules: Vec<(&Rule, usize)> = self.symbol_rules[symbol]
+        let mut rules: Vec<(&Rule, usize)> = self.symbol_rules[&symbol]
             .iter()
             .map(|id| (self.rule(*id), 0))
             .collect();
+        let null = Symbol::Null.id();
 
         loop {
             for (rule, idx) in &mut rules {
                 let mut rule_buffer = HashSet::new();
 
-                for sym in &rule.body[*idx..] {
+                for id in &rule.body[*idx..] {
                     *idx += 1;
 
-                    if sym == symbol {
-                        rule_buffer.remove(&Symbol::Null);
+                    if *id == symbol {
+                        rule_buffer.remove(&null);
                         break;
                     }
 
-                    let first: Vec<Symbol> = self.first(sym);
-                    let has_null = first.iter().any(|symbol| *symbol == Symbol::Null);
+                    let first: Vec<usize> = self.first(*id);
+                    let has_null = first.contains(&null);
                     rule_buffer.extend(first);
 
                     if !has_null {
-                        rule_buffer.remove(&Symbol::Null);
+                        rule_buffer.remove(&null);
                         break;
                     }
                 }
@@ -167,7 +177,7 @@ impl Grammar {
             }
 
             let all_done = rules.iter().all(|(rule, idx)| rule.body.len() == *idx);
-            let has_null = buffer.iter().any(|symbol| *symbol == Symbol::Null);
+            let has_null = buffer.contains(&null);
 
             if all_done || !has_null {
                 break;
@@ -177,16 +187,17 @@ impl Grammar {
         self.cache_first(symbol, &buffer)
     }
 
-    pub fn first_sequence(&self, symbols: &[Symbol]) -> Vec<Symbol> {
+    pub fn first_sequence(&self, symbols: &[usize]) -> Vec<usize> {
         let mut buffer = HashSet::new();
+        let null = Symbol::Null.id();
 
         for symbol in symbols {
-            let per_symbol = self.first(symbol);
-            let has_null = per_symbol.iter().any(|symbol| *symbol == Symbol::Null);
+            let per_symbol = self.first(*symbol);
+            let has_null = per_symbol.contains(&null);
             buffer.extend(per_symbol);
 
             if !has_null {
-                buffer.remove(&Symbol::Null);
+                buffer.remove(&null);
                 break;
             }
         }
@@ -194,17 +205,17 @@ impl Grammar {
         util::to_sorted_vec(&buffer)
     }
 
-    fn cache_first(&self, symbol: &Symbol, buffer: &HashSet<Symbol>) -> Vec<Symbol> {
+    fn cache_first(&self, symbol: usize, buffer: &HashSet<usize>) -> Vec<usize> {
         let first = util::to_sorted_vec(buffer);
         let mut cache = self.first.borrow_mut();
-        cache.insert(symbol.clone(), first.clone());
+        cache.insert(symbol, first.clone());
         first
     }
 }
 
 impl Display for Grammar {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let rules = util::to_string(self.rules.iter(), "\n");
+        let rules = util::as_string(self.rules.iter(), self, "\n");
         write!(f, "{} ({})\n{}", self.name, self.description, rules)
     }
 }

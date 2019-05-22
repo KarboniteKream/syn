@@ -9,55 +9,55 @@ use crate::util::AsString;
 pub struct Item {
     pub id: usize,
     pub rule: usize,
-    pub idx: usize,
-    pub head: Option<Symbol>,
-    pub lookahead: Symbol,
+    pub dot: usize,
+    pub head: Option<usize>,
+    pub lookahead: usize,
     pub unique: bool,
 }
 
 impl Item {
-    pub fn new(id: usize, rule: &Rule, lookahead: Symbol, unique: bool) -> Item {
+    pub fn new(id: usize, rule: &Rule, lookahead: usize, unique: bool) -> Item {
         Item {
             id,
             rule: rule.id,
-            idx: 0,
-            head: Some(rule.body[0].clone()),
+            dot: 0,
+            head: Some(rule.body[0]),
             lookahead,
             unique,
         }
     }
 
     pub fn pass(&mut self, rule: &Rule) {
-        if self.idx < rule.body.len() {
-            self.idx += 1;
+        if self.dot < rule.body.len() {
+            self.dot += 1;
 
-            self.head = match rule.body.get(self.idx) {
-                Some(head) => Some(head.clone()),
+            self.head = match rule.body.get(self.dot) {
+                Some(id) => Some(*id),
                 None => None,
-            }
+            };
         }
     }
 
-    pub fn tail(&self, rule: &Rule) -> Vec<Symbol> {
+    pub fn tail(&self, rule: &Rule) -> Vec<usize> {
         let mut tail = if self.head.is_some() {
-            rule.body[self.idx + 1..].to_vec()
+            rule.body[self.dot + 1..].to_vec()
         } else {
             Vec::new()
         };
 
-        tail.push(self.lookahead.clone());
+        tail.push(self.lookahead);
         tail
     }
 
-    pub fn follow(&self, rule: &Rule) -> Vec<Symbol> {
-        let mut follow = rule.body[self.idx..].to_vec();
-        follow.push(self.lookahead.clone());
+    pub fn follow(&self, rule: &Rule) -> Vec<usize> {
+        let mut follow = rule.body[self.dot..].to_vec();
+        follow.push(self.lookahead);
         follow
     }
 
-    pub fn at_nonterminal(&self) -> bool {
-        match &self.head {
-            Some(head) => head.is_nonterminal(),
+    pub fn at_nonterminal(&self, symbols: &[Symbol]) -> bool {
+        match self.head {
+            Some(id) => symbols[id].is_nonterminal(),
             None => false,
         }
     }
@@ -67,19 +67,19 @@ impl Item {
             return false;
         }
 
-        match &self.head {
-            Some(head) => *head == Symbol::Null,
+        match self.head {
+            Some(id) => id == Symbol::Null.id(),
             None => true,
         }
     }
 
     pub fn can_accept(&self) -> bool {
-        if self.rule != 0 || self.idx == 0 {
+        if self.rule != 0 || self.dot == 0 {
             return false;
         }
 
-        match &self.head {
-            Some(head) => *head == Symbol::End,
+        match self.head {
+            Some(id) => id == Symbol::End.id(),
             None => false,
         }
     }
@@ -88,7 +88,7 @@ impl Item {
 impl PartialEq for Item {
     fn eq(&self, other: &Item) -> bool {
         self.rule == other.rule
-            && self.idx == other.idx
+            && self.dot == other.dot
             && self.lookahead == other.lookahead
             && self.unique == other.unique
     }
@@ -99,24 +99,27 @@ impl Eq for Item {}
 impl Hash for Item {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.rule.hash(state);
-        self.idx.hash(state);
+        self.dot.hash(state);
         self.lookahead.hash(state);
         self.unique.hash(state);
     }
 }
 
 impl AsString for Item {
-    fn as_string(&self, grammar: &Grammar) -> String {
+    fn string(&self, grammar: &Grammar) -> String {
         let rule = grammar.rule(self.rule);
         let dot = String::from("·");
 
-        let mut body = if rule.body == vec![Symbol::Null] {
+        let mut body = if rule.body == vec![Symbol::Null.id()] {
             Vec::new()
         } else {
-            rule.body.iter().map(Symbol::to_string).collect()
+            rule.body
+                .iter()
+                .map(|id| grammar.symbol(*id).to_string())
+                .collect()
         };
 
-        if let Some(symbol) = body.get_mut(self.idx) {
+        if let Some(symbol) = body.get_mut(self.dot) {
             *symbol = dot + symbol;
         } else {
             body.push(dot);
@@ -127,9 +130,9 @@ impl AsString for Item {
         format!(
             "({}) {} → {}, {} {}",
             self.id,
-            rule.head,
+            grammar.symbol(rule.head),
             body.join(" "),
-            self.lookahead,
+            grammar.symbol(self.lookahead),
             unique
         )
     }

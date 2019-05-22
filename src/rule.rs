@@ -1,30 +1,27 @@
 use std::collections::HashSet;
-use std::fmt::{self, Display, Formatter};
 use std::hash::{Hash, Hasher};
 
+use crate::grammar::Grammar;
 use crate::symbol::Symbol;
-use crate::util;
+use crate::util::AsString;
 
 #[derive(Clone, Debug, Ord, PartialOrd)]
 pub struct Rule {
     pub id: usize,
-    pub head: Symbol,
-    pub body: Vec<Symbol>,
+    pub head: usize,
+    pub body: Vec<usize>,
 }
 
 impl Rule {
-    pub fn new(id: usize, head: Symbol, body: Vec<Symbol>) -> Rule {
+    pub fn new(id: usize, head: usize, body: Vec<usize>) -> Rule {
         Rule { id, head, body }
     }
 
-    pub fn first(&self) -> &Symbol {
-        &self.body[0]
-    }
-
-    pub fn nonterminals(&self) -> HashSet<&Symbol> {
+    pub fn nonterminals(&self, symbols: &[Symbol]) -> HashSet<usize> {
         self.body
             .iter()
-            .filter(|symbol| symbol.is_nonterminal())
+            .filter(|id| symbols[**id].is_nonterminal())
+            .cloned()
             .collect()
     }
 }
@@ -44,9 +41,15 @@ impl Hash for Rule {
     }
 }
 
-impl Display for Rule {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let body = util::to_string(self.body.iter(), " ");
-        write!(f, "({}) {} → {}", self.id, self.head, body)
+impl AsString for Rule {
+    fn string(&self, grammar: &Grammar) -> String {
+        let head = grammar.symbol(self.head);
+        let body: Vec<String> = self
+            .body
+            .iter()
+            .map(|id| grammar.symbol(*id).to_string())
+            .collect();
+
+        format!("({}) {} → {}", self.id, head, body.join(" "))
     }
 }

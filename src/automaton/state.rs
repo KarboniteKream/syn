@@ -21,15 +21,18 @@ impl State {
     }
 
     pub fn initial(grammar: &Grammar) -> State {
-        State::new(0, vec![Item::new(0, grammar.rule(0), Symbol::Null, true)])
+        State::new(
+            0,
+            vec![Item::new(0, grammar.rule(0), Symbol::Null.id(), true)],
+        )
     }
 
-    pub fn transitions(&self) -> Vec<Symbol> {
-        let transitions: HashSet<Symbol> = self
+    pub fn transitions(&self) -> Vec<usize> {
+        let transitions: HashSet<usize> = self
             .items
             .iter()
-            .filter_map(|item| item.head.clone())
-            .filter(|symbol| *symbol != Symbol::Null)
+            .filter_map(|item| item.head)
+            .filter(|head| *head != Symbol::Null.id())
             .collect();
 
         util::to_sorted_vec(&transitions)
@@ -37,14 +40,14 @@ impl State {
 
     pub fn derive(
         &self,
-        symbol: &Symbol,
+        symbol: usize,
         grammar: &Grammar,
         id: usize,
     ) -> Option<(State, HashSet<ItemTransition>)> {
         let mut items: Vec<Item> = self
             .items
             .iter()
-            .filter(|item| match &item.head {
+            .filter(|item| match item.head {
                 Some(head) => head == symbol,
                 None => false,
             })
@@ -61,16 +64,12 @@ impl State {
         let mut queue = VecDeque::new();
 
         for (idx, item) in items.iter_mut().enumerate() {
-            transitions.insert(ItemTransition::new(
-                (self.id, item.id),
-                (id, idx),
-                symbol.clone(),
-            ));
+            transitions.insert(ItemTransition::new((self.id, item.id), (id, idx), symbol));
 
             item.id = idx;
             item.pass(grammar.rule(item.rule));
 
-            if item.at_nonterminal() {
+            if item.at_nonterminal(&grammar.symbols) {
                 queue.push_back(item.clone());
             }
 
@@ -81,17 +80,16 @@ impl State {
         }
 
         while let Some(item) = queue.pop_front() {
-            let head: Symbol = item.head.clone().unwrap();
+            let head = item.head.unwrap();
             let tail = item.tail(grammar.rule(item.rule));
-            let lookaheads: Vec<Symbol> = grammar.first_sequence(&tail);
+            let lookaheads = grammar.first_sequence(&tail);
 
-            for rule in grammar.rules(&head) {
-                for lookahead in lookaheads.clone() {
-                    let rule = Rule::new(rule.id, head.clone(), rule.body.clone());
-                    let mut next_item = Item::new(items.len(), &rule, lookahead, item.unique);
-
+            for rule in grammar.rules(head) {
+                for lookahead in &lookaheads {
+                    let rule = Rule::new(rule.id, head, rule.body.clone());
+                    let mut next_item = Item::new(items.len(), &rule, *lookahead, item.unique);
                     let mut transition =
-                        ItemTransition::new((id, item.id), (id, next_item.id), Symbol::Null);
+                        ItemTransition::new((id, item.id), (id, next_item.id), Symbol::Null.id());
 
                     if let Some(item) = buffer.get(&next_item) {
                         transition.to.1 = item.id;
@@ -107,13 +105,13 @@ impl State {
                         items[item.id].unique = parents.iter().all(|item| {
                             item.unique
                                 && item.rule == parents[0].rule
-                                && item.idx == parents[0].idx
+                                && item.dot == parents[0].dot
                         });
 
                         continue;
                     }
 
-                    if next_item.at_nonterminal() {
+                    if next_item.at_nonterminal(&grammar.symbols) {
                         queue.push_back(next_item.clone());
                     }
 
@@ -146,7 +144,7 @@ impl Hash for State {
 }
 
 impl AsString for State {
-    fn as_string(&self, grammar: &Grammar) -> String {
+    fn string(&self, grammar: &Grammar) -> String {
         let items = util::as_string(self.items.iter(), grammar, "; ");
         format!("({}) [{}]", self.id, items)
     }
