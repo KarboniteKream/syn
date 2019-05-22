@@ -2,6 +2,8 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::error;
 use std::fmt::{self, Display, Formatter};
 
+use indexmap::IndexSet;
+
 mod action;
 mod item;
 mod state;
@@ -26,7 +28,8 @@ pub struct Automaton {
 
 impl Automaton {
     pub fn new(grammar: Grammar) -> Automaton {
-        let mut states = HashSet::new();
+        let mut states = IndexSet::new();
+
         let mut state_transitions = HashSet::new();
         let mut items = HashSet::new();
         let mut item_transitions = HashSet::new();
@@ -37,7 +40,9 @@ impl Automaton {
         items.insert(initial_state.items[0].clone());
         enqueue(&mut queue, &initial_state);
 
-        while let Some((state, symbol)) = queue.pop_front() {
+        while let Some((id, symbol)) = queue.pop_front() {
+            let state = states.get_index(id).unwrap();
+
             let (mut next_state, transitions) =
                 state.derive(symbol, &grammar, states.len()).unwrap();
             let mut state_transition = StateTransition::new(state.id, next_state.id, symbol);
@@ -240,9 +245,9 @@ impl Automaton {
     }
 }
 
-fn enqueue(queue: &mut VecDeque<(State, usize)>, state: &State) {
+fn enqueue(queue: &mut VecDeque<(usize, usize)>, state: &State) {
     for symbol in state.transitions() {
-        queue.push_back((state.clone(), symbol));
+        queue.push_back((state.id, symbol));
     }
 }
 
