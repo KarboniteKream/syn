@@ -122,7 +122,9 @@ impl Grammar {
 
         if !nonterminals.is_empty() {
             let not_realizable = util::to_sorted_vec(&nonterminals);
-            return Err(Error::NotRealizable(self.symbol(not_realizable[0]).clone()));
+            return Err(Error::NotRealizable(
+                self.symbol(*not_realizable[0]).clone(),
+            ));
         }
 
         Ok(())
@@ -202,11 +204,11 @@ impl Grammar {
             }
         }
 
-        util::to_sorted_vec(&buffer)
+        util::to_sorted_vec(buffer)
     }
 
     fn cache_first(&self, symbol: usize, buffer: &HashSet<usize>) -> Vec<usize> {
-        let first = util::to_sorted_vec(buffer);
+        let first = util::to_sorted_vec(buffer.clone());
         let mut cache = self.first.borrow_mut();
         cache.insert(symbol, first.clone());
         first

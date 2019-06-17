@@ -34,31 +34,30 @@ fn main() {
     let grammar = &automaton.grammar;
 
     let action_table = match automaton.action_table() {
-        Ok(action_table) => util::to_sorted_vec(&action_table),
+        Ok(action_table) => util::to_sorted_vec(action_table),
         Err(error) => {
             eprintln!("Grammar '{}' is not valid: {}", grammar.name, error);
             process::exit(1);
         }
     };
-
     println!("\nACTION");
     for ((state, symbol), action) in action_table {
         println!("{}, {} → {}", state, grammar.symbol(symbol), action);
     }
 
-    let goto_table = util::to_sorted_vec(&automaton.goto_table());
+    let goto_table = util::to_sorted_vec(automaton.goto_table());
     println!("\nGOTO");
     for ((from, symbol), to) in goto_table {
         println!("{}, {} → {}", from, grammar.symbol(symbol), to);
     }
 
-    let unique_table = util::to_sorted_vec(&automaton.unique_table());
+    let unique_table = util::to_sorted_vec(automaton.unique_table());
     println!("\nUNIQUE");
     for ((state, symbol), item) in unique_table {
         println!("{}, {} → {}", state, grammar.symbol(symbol), item);
     }
 
-    let parse_table = util::to_sorted_vec(&automaton.parse_table());
+    let parse_table = util::to_sorted_vec(automaton.parse_table());
     println!("\nPARSE");
     for ((from_item, state), to_item) in parse_table {
         println!("{}, {} → {}", from_item, state, to_item);

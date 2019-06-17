@@ -33,12 +33,12 @@ pub fn parse_args<'a>() -> ArgMatches<'a> {
         .get_matches()
 }
 
-pub fn to_sorted_vec<I, T>(collection: &I) -> Vec<T>
+pub fn to_sorted_vec<I, T>(collection: I) -> Vec<T>
 where
-    I: Clone + IntoIterator<Item = T>,
+    I: IntoIterator<Item = T>,
     T: Ord,
 {
-    let mut vec: Vec<T> = collection.clone().into_iter().collect();
+    let mut vec: Vec<T> = collection.into_iter().collect();
     vec.sort_unstable();
     vec
 }

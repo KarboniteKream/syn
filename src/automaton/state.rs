@@ -1,6 +1,8 @@
 use std::collections::{HashSet, VecDeque};
 use std::hash::{Hash, Hasher};
 
+use indexmap::IndexSet;
+
 use crate::grammar::Grammar;
 use crate::rule::Rule;
 use crate::symbol::Symbol;
@@ -8,53 +10,53 @@ use crate::util::{self, AsString};
 
 use super::item::Item;
 use super::transition::ItemTransition;
+use super::Automaton;
 
 #[derive(Clone, Debug, Ord, PartialOrd)]
 pub struct State {
     pub id: usize,
-    pub items: Vec<Item>,
+    pub items: Vec<usize>,
 }
 
 impl State {
-    pub fn new(id: usize, items: Vec<Item>) -> State {
+    pub fn new(id: usize, items: Vec<usize>) -> State {
         State { id, items }
     }
 
-    pub fn initial(grammar: &Grammar) -> State {
-        State::new(
-            0,
-            vec![Item::new(0, grammar.rule(0), Symbol::Null.id(), true)],
-        )
-    }
-
-    pub fn transitions(&self) -> Vec<usize> {
+    pub fn transitions(&self, items: &IndexSet<Item>) -> Vec<usize> {
         let transitions: HashSet<usize> = self
             .items
             .iter()
-            .filter_map(|item| item.head)
+            .filter_map(|id| items.get_index(*id).unwrap().head)
             .filter(|head| *head != Symbol::Null.id())
             .collect();
 
-        util::to_sorted_vec(&transitions)
+        util::to_sorted_vec(transitions)
     }
 
     pub fn derive(
         &self,
         symbol: usize,
         grammar: &Grammar,
+        items: &mut IndexSet<Item>,
         id: usize,
     ) -> Option<(State, HashSet<ItemTransition>)> {
-        let mut items: Vec<Item> = self
+        let mut next_items: Vec<Item> = self
             .items
             .iter()
+            .enumerate()
+            .map(|(idx, id)| {
+                let mut item = items.get_index(*id).unwrap().clone();
+                item.id = idx;
+                item
+            })
             .filter(|item| match item.head {
                 Some(head) => head == symbol,
                 None => false,
             })
-            .cloned()
             .collect();
 
-        if items.is_empty() {
+        if next_items.is_empty() {
             return None;
         }
 
@@ -63,7 +65,7 @@ impl State {
         let mut buffer = HashSet::new();
         let mut queue = VecDeque::new();
 
-        for (idx, item) in items.iter_mut().enumerate() {
+        for (idx, item) in next_items.iter_mut().enumerate() {
             transitions.insert(ItemTransition::new((self.id, item.id), (id, idx), symbol));
 
             item.id = idx;
@@ -87,22 +89,26 @@ impl State {
             for rule in grammar.rules(head) {
                 for lookahead in &lookaheads {
                     let rule = Rule::new(rule.id, head, rule.body.clone());
-                    let mut next_item = Item::new(items.len(), &rule, *lookahead, item.unique);
+                    let mut next_item = Item::new(next_items.len(), &rule, *lookahead, item.unique);
                     let mut transition =
                         ItemTransition::new((id, item.id), (id, next_item.id), Symbol::Null.id());
 
-                    if let Some(item) = buffer.get(&next_item) {
-                        transition.to.1 = item.id;
+                    if let Some(existing) = buffer.get(&next_item) {
+                        transition.to.1 = existing.id;
                         transitions.insert(transition);
+
+                        if !existing.unique {
+                            continue;
+                        }
 
                         let parents: Vec<&Item> = transitions
                             .iter()
-                            .filter(|transition| transition.to.1 == item.id)
+                            .filter(|transition| transition.to.1 == existing.id)
                             .map(|transition| transition.from.1)
-                            .filter_map(|id| items.get(id).or_else(|| self.items.get(id)))
+                            .filter_map(|idx| next_items.get(idx))
                             .collect();
 
-                        items[item.id].unique = parents.iter().all(|item| {
+                        next_items[existing.id].unique = parents.iter().all(|item| {
                             item.unique
                                 && item.rule == parents[0].rule
                                 && item.dot == parents[0].dot
@@ -115,7 +121,7 @@ impl State {
                         queue.push_back(next_item.clone());
                     }
 
-                    items.push(next_item.clone());
+                    next_items.push(next_item.clone());
                     transitions.insert(transition);
 
                     buffer.insert(next_item.clone());
@@ -125,7 +131,38 @@ impl State {
             }
         }
 
-        Some((State::new(id, items), transitions))
+        let next_items = next_items
+            .iter()
+            .map(|item| {
+                if let Some(existing) = items.get(item) {
+                    return existing.id;
+                }
+
+                let id = items.len();
+                let mut item = item.clone();
+                item.id = id;
+                items.insert(item);
+                id
+            })
+            .collect();
+
+        Some((State::new(id, next_items), transitions))
+    }
+
+    pub fn string(&self, automaton: &Automaton) -> String {
+        let items = self
+            .items
+            .iter()
+            .enumerate()
+            .map(|(idx, id)| {
+                let mut item = automaton.items[*id].clone();
+                item.id = idx;
+                item.string(&automaton.grammar)
+            })
+            .collect::<Vec<String>>()
+            .join("; ");
+
+        format!("({}) [{}]", self.id, items)
     }
 }
 
@@ -140,12 +177,5 @@ impl Eq for State {}
 impl Hash for State {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.items.hash(state);
-    }
-}
-
-impl AsString for State {
-    fn string(&self, grammar: &Grammar) -> String {
-        let items = util::as_string(self.items.iter(), grammar, "; ");
-        format!("({}) [{}]", self.id, items)
     }
 }
