@@ -1,0 +1,130 @@
+name = "prev"
+start_symbol = "source"
+
+[rules]
+source = [
+    "definitions",
+]
+
+definitions = [
+    "definition",
+    "definitions ; definition",
+]
+
+definition = [
+    "type_definition",
+    "function_definition",
+    "variable_definition",
+]
+
+type_definition = [
+    "typ identifier : type",
+]
+
+type = [
+    "identifier",
+    "logical",
+    "integer",
+    "string",
+    "arr [ int_const ] type",
+    "rec { components }",
+    "^ type",
+]
+
+components = [
+    "component",
+    "components , component",
+]
+
+component = [
+    "identifier : type",
+]
+
+function_definition = [
+    "fun identifier ( parameters ) : type = expression",
+]
+
+parameters = [
+    "parameter",
+    "parameters , parameter",
+]
+
+parameter = [
+    "identifier : type",
+]
+
+expression = [
+    "logical_or_expression",
+    "logical_or_expression { where definitions }",
+]
+
+logical_or_expression = [
+    "logical_or_expression | logical_and_expression",
+    "logical_and_expression",
+]
+
+logical_and_expression = [
+    "logical_and_expression & compare_expression",
+    "compare_expression",
+]
+
+compare_expression = [
+    "additive_expression == additive_expression",
+    "additive_expression != additive_expression",
+    "additive_expression <= additive_expression",
+    "additive_expression >= additive_expression",
+    "additive_expression < additive_expression",
+    "additive_expression > additive_expression",
+    "additive_expression",
+]
+
+additive_expression = [
+    "additive_expression + multiplicative_expression",
+    "additive_expression - multiplicative_expression",
+    "multiplicative_expression",
+]
+
+multiplicative_expression = [
+    "multiplicative_expression * prefix_expression",
+    "multiplicative_expression / prefix_expression",
+    "multiplicative_expression % prefix_expression",
+    "prefix_expression",
+]
+
+prefix_expression = [
+    "+ prefix_expression",
+    "- prefix_expression",
+    "^ prefix_expression",
+    "! prefix_expression",
+    "postfix_expression",
+]
+
+postfix_expression = [
+    "postfix_expression ^",
+    "postfix_expression . identifier",
+    "postfix_expression [ expression ]",
+    "atom_expression",
+]
+
+atom_expression = [
+    "log_constant",
+    "int_constant",
+    "str_constant",
+    "identifier",
+    "identifier ( expressions )",
+    "{ expression = expression }",
+    "{ if expression then expression }",
+    "{ if expression then expression else expression }",
+    "{ while expression : expression }",
+    "{ for identifier = expression , expression , expression : expression }",
+    "( expressions )",
+]
+
+expressions = [
+    "expression",
+    "expressions, expression",
+]
+
+variable_definition = [
+    "var identifier : type",
+]
