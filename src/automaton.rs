@@ -163,8 +163,8 @@ impl Automaton {
             .iter()
             .map(|ItemTransition { from, to, .. }| {
                 let state = to.0;
-                let from = self.states[from.0].items[from.1];
-                let to = self.states[to.0].items[to.1];
+                let from = util::get_index(&self.states[from.0].items, from.1);
+                let to = util::get_index(&self.states[to.0].items, to.1);
 
                 ((to, state), from)
             })
@@ -213,8 +213,11 @@ impl Automaton {
             .item_transitions
             .iter()
             .map(|ItemTransition { from, to, symbol }| {
+                let from_item = util::get_index(&self.states[from.0].items, from.1);
+                let to_item = util::get_index(&self.states[to.0].items, to.1);
+
                 let color = if *symbol == Symbol::Null.id() {
-                    if from.1 < to.1 {
+                    if from_item < to_item {
                         "crimson"
                     } else {
                         "forestgreen"
@@ -225,7 +228,7 @@ impl Automaton {
 
                 format!(
                     "    {}:{} -> {}:{} [color={}];",
-                    from.0, from.1, to.0, to.1, color
+                    from.0, from_item, to.0, to_item, color
                 )
             })
             .collect::<Vec<String>>()

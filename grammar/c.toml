@@ -1,4 +1,3 @@
-# TODO: Try to remove capital words.
 name = "c"
 description = "ANSI C"
 start_symbol = "translation_unit"

@@ -40,7 +40,7 @@ impl State {
         symbol: usize,
         grammar: &Grammar,
         items: &mut IndexSet<Item>,
-        id: usize,
+        state_id: usize,
     ) -> Option<(State, HashSet<ItemTransition>)> {
         let mut next_items: Vec<Item> = self
             .items
@@ -67,7 +67,11 @@ impl State {
         let mut queue = VecDeque::new();
 
         for (idx, item) in next_items.iter_mut().enumerate() {
-            transitions.insert(ItemTransition::new((self.id, item.id), (id, idx), symbol));
+            transitions.insert(ItemTransition::new(
+                (self.id, item.id),
+                (state_id, idx),
+                symbol,
+            ));
 
             item.id = idx;
             item.pass(grammar.rule(item.rule));
@@ -83,6 +87,9 @@ impl State {
         }
 
         while let Some(item) = queue.pop_front() {
+            let mut item = item;
+            item.unique = next_items[item.id].unique;
+
             let head = item.head.unwrap();
             let tail = item.tail(grammar.rule(item.rule));
             let lookaheads = grammar.first_sequence(&tail);
@@ -91,10 +98,16 @@ impl State {
                 for lookahead in &lookaheads {
                     let rule = Rule::new(rule.id, head, rule.body.clone());
                     let mut next_item = Item::new(next_items.len(), &rule, *lookahead, item.unique);
-                    let mut transition =
-                        ItemTransition::new((id, item.id), (id, next_item.id), Symbol::Null.id());
+                    let mut transition = ItemTransition::new(
+                        (state_id, item.id),
+                        (state_id, next_item.id),
+                        Symbol::Null.id(),
+                    );
 
                     if let Some(existing) = buffer.get(&next_item) {
+                        let mut existing = existing.clone();
+                        existing.unique = next_items[existing.id].unique;
+
                         transition.to.1 = existing.id;
                         transitions.insert(transition);
 
@@ -102,18 +115,47 @@ impl State {
                             continue;
                         }
 
-                        let parents: Vec<&Item> = transitions
-                            .iter()
-                            .filter(|transition| transition.to.1 == existing.id)
-                            .map(|transition| transition.from.1)
-                            .filter_map(|idx| next_items.get(idx))
-                            .collect();
+                        if existing.id == item.id {
+                            next_items[existing.id].unique = false;
+                        } else {
+                            let parents: Vec<&Item> = transitions
+                                .iter()
+                                .filter(|transition| transition.to.1 == existing.id)
+                                .map(|transition| transition.from.1)
+                                .filter_map(|idx| next_items.get(idx))
+                                .collect();
 
-                        next_items[existing.id].unique = parents.iter().all(|item| {
-                            item.unique
-                                && item.rule == parents[0].rule
-                                && item.dot == parents[0].dot
-                        });
+                            next_items[existing.id].unique = parents.iter().all(|item| {
+                                item.unique
+                                    && item.rule == parents[0].rule
+                                    && item.dot == parents[0].dot
+                            });
+                        }
+
+                        if !next_items[existing.id].unique {
+                            let mut non_unique = HashSet::new();
+                            non_unique.insert(existing.id);
+
+                            loop {
+                                non_unique = transitions
+                                    .iter()
+                                    .filter(|transition| {
+                                        transition.from.0 == state_id
+                                            && next_items[transition.to.1].unique
+                                            && non_unique.contains(&transition.from.1)
+                                    })
+                                    .map(|transition| transition.to.1)
+                                    .collect();
+
+                                if non_unique.is_empty() {
+                                    break;
+                                }
+
+                                for id in &non_unique {
+                                    next_items[*id].unique = false;
+                                }
+                            }
+                        }
 
                         continue;
                     }
@@ -132,7 +174,7 @@ impl State {
             }
         }
 
-        let next_items = next_items
+        let mut next_items: Vec<usize> = next_items
             .iter()
             .map(|item| {
                 if let Some(existing) = items.get(item) {
@@ -147,7 +189,27 @@ impl State {
             })
             .collect();
 
-        Some((State::new(id, next_items), transitions))
+        let transitions = transitions
+            .into_iter()
+            .map(|ItemTransition { from, to, symbol }| {
+                let from = if from.0 == self.id {
+                    (from.0, self.items[from.1])
+                } else {
+                    (from.0, next_items[from.1])
+                };
+
+                let to = if to.0 == self.id {
+                    (to.0, self.items[to.1])
+                } else {
+                    (to.0, next_items[to.1])
+                };
+
+                ItemTransition::new(from, to, symbol)
+            })
+            .collect();
+
+        next_items.sort_unstable();
+        Some((State::new(state_id, next_items), transitions))
     }
 
     pub fn string(&self, automaton: &Automaton) -> String {

@@ -33,6 +33,13 @@ pub fn parse_args<'a>() -> ArgMatches<'a> {
         .get_matches()
 }
 
+pub fn get_index<T>(collection: &[T], value: T) -> usize
+where
+    T: Eq,
+{
+    collection.iter().position(|item| *item == value).unwrap()
+}
+
 pub fn to_sorted_vec<I, T>(collection: I) -> Vec<T>
 where
     I: IntoIterator<Item = T>,
