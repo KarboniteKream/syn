@@ -85,7 +85,13 @@ pub fn parse_file(filename: &Path) -> Result<Grammar, Error> {
             };
 
             let head = get_symbol(name, false, &mut names, &mut symbols);
-            rules.push(Rule::new(rules.len(), head, body));
+            let rule = Rule::new(rules.len(), head, body);
+
+            if rules.contains(&rule) {
+                continue;
+            }
+
+            rules.push(rule);
         }
     }
 
