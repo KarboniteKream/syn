@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 
 use crate::grammar::Grammar;
@@ -5,7 +6,7 @@ use crate::rule::Rule;
 use crate::symbol::Symbol;
 use crate::util::AsString;
 
-#[derive(Clone, Debug, Ord, PartialOrd)]
+#[derive(Clone, Debug)]
 pub struct Item {
     pub id: usize,
     pub rule: usize,
@@ -86,7 +87,7 @@ impl Item {
 }
 
 impl PartialEq for Item {
-    fn eq(&self, other: &Item) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         self.rule == other.rule
             && self.dot == other.dot
             && self.lookahead == other.lookahead
@@ -95,6 +96,18 @@ impl PartialEq for Item {
 }
 
 impl Eq for Item {}
+
+impl PartialOrd for Item {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Item {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.id.cmp(&other.id)
+    }
+}
 
 impl Hash for Item {
     fn hash<H: Hasher>(&self, state: &mut H) {

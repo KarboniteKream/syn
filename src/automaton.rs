@@ -48,17 +48,17 @@ impl Automaton {
                 .unwrap();
             let mut state_transition = StateTransition::new(state.id, next_state.id, symbol);
 
-            if let Some(state) = states.get(&next_state) {
-                state_transition.to = state.id;
+            if let Some(existing) = states.get(&next_state) {
+                state_transition.to = existing.id;
                 state_transitions.insert(state_transition);
 
                 for mut transition in transitions {
                     if transition.from.0 == next_state.id {
-                        transition.from.0 = state.id;
+                        transition.from.0 = existing.id;
                     }
 
                     if transition.to.0 == next_state.id {
-                        transition.to.0 = state.id;
+                        transition.to.0 = existing.id;
                     }
 
                     item_transitions.insert(transition);

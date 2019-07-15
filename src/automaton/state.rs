@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::{HashSet, VecDeque};
 use std::hash::{Hash, Hasher};
 
@@ -12,7 +13,7 @@ use super::item::Item;
 use super::transition::ItemTransition;
 use super::Automaton;
 
-#[derive(Clone, Debug, Ord, PartialOrd)]
+#[derive(Clone, Debug)]
 pub struct State {
     pub id: usize,
     pub items: Vec<usize>,
@@ -173,6 +174,18 @@ impl PartialEq for State {
 }
 
 impl Eq for State {}
+
+impl PartialOrd for State {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for State {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.id.cmp(&other.id)
+    }
+}
 
 impl Hash for State {
     fn hash<H: Hasher>(&self, state: &mut H) {
