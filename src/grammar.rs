@@ -3,15 +3,22 @@ use std::collections::{HashMap, HashSet};
 use std::error;
 use std::fmt::{self, Display, Formatter};
 
+use regex::Regex;
+
 use crate::rule::Rule;
 use crate::symbol::Symbol;
 use crate::util;
+
+mod reader;
+
+pub use reader::read_file;
 
 #[derive(Clone, Debug)]
 pub struct Grammar {
     pub name: String,
     description: String,
     pub symbols: Vec<Symbol>,
+    pub tokens: Vec<(usize, Regex)>,
     start_symbol: usize,
     rules: Vec<Rule>,
     symbol_rules: HashMap<usize, Vec<usize>>,
@@ -23,6 +30,7 @@ impl Grammar {
         name: String,
         description: String,
         symbols: Vec<Symbol>,
+        tokens: Vec<(usize, Regex)>,
         rules: Vec<Rule>,
         start_symbol: usize,
     ) -> Grammar {
@@ -38,6 +46,7 @@ impl Grammar {
             name,
             description,
             symbols,
+            tokens,
             start_symbol,
             rules,
             symbol_rules,

@@ -4,13 +4,14 @@ use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::Path;
 
+use regex::{self, Regex};
 use toml::{map::Map, Value};
 
 use crate::grammar::Grammar;
 use crate::rule::Rule;
 use crate::symbol::Symbol;
 
-pub fn parse_file(filename: &Path) -> Result<Grammar, Error> {
+pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
     let value = match fs::read_to_string(filename) {
         Ok(contents) => match contents.parse::<Value>() {
             Ok(value) => value,
@@ -95,10 +96,53 @@ pub fn parse_file(filename: &Path) -> Result<Grammar, Error> {
         }
     }
 
+    let mut tokens = Vec::new();
+    let definitions = from_table(&data, "tokens", &Value::as_table)
+        .map(Map::clone)
+        .unwrap_or_default();
+
+    for symbol in &symbols {
+        let (id, name) = match symbol {
+            Symbol::Terminal(id, name) => (id, name),
+            _ => continue,
+        };
+
+        let pattern = format!("^{}$", regex::escape(name));
+
+        let regex = match Regex::new(pattern.as_str()) {
+            Ok(regex) => regex,
+            Err(_) => return Err(Error::Regex(pattern)),
+        };
+
+        tokens.push((*id, regex));
+    }
+
+    for (name, pattern) in definitions {
+        let symbol = match names.get(&name) {
+            Some(symbol) => *symbol,
+            None => continue,
+        };
+
+        let pattern = match pattern.as_str() {
+            Some(value) => format!("^{}$", value),
+            None => return Err(Error::Token(name.to_owned())),
+        };
+
+        let regex = match Regex::new(pattern.as_str()) {
+            Ok(pattern) => pattern,
+            Err(_) => return Err(Error::Regex(pattern)),
+        };
+
+        let idx = tokens.iter().position(|(id, _)| *id == symbol).unwrap();
+        tokens.remove(idx);
+        tokens.push((symbol, regex));
+    }
+
     Ok(Grammar::new(
         name,
         description,
         symbols,
+        tokens,
         rules,
         start_symbol,
     ))
@@ -142,15 +186,19 @@ fn get_symbol(
 pub enum Error {
     File(String),
     Key(String),
+    Regex(String),
     Rule(String),
+    Token(String),
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            Error::File(error) => write!(f, "Cannot parse file: {}", error),
+            Error::File(error) => write!(f, "Cannot parse file {}", error),
             Error::Key(name) => write!(f, "Cannot parse key '{}'", name),
+            Error::Regex(pattern) => write!(f, "Cannot parse expression /{}/", pattern),
             Error::Rule(name) => write!(f, "Cannot parse rule {}", name),
+            Error::Token(name) => write!(f, "Cannot parse token '{}'", name),
         }
     }
 }

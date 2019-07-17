@@ -4,7 +4,6 @@ use std::process;
 
 mod automaton;
 mod grammar;
-mod parser;
 mod rule;
 mod symbol;
 mod util;
@@ -15,7 +14,7 @@ fn main() {
     let args = util::parse_args();
 
     let filename = args.value_of("filename").unwrap();
-    let grammar = match parser::parse_file(Path::new(filename)) {
+    let grammar = match grammar::read_file(Path::new(filename)) {
         Ok(grammar) => grammar,
         Err(error) => {
             eprintln!("File '{}' cannot be parsed: {}", filename, error);

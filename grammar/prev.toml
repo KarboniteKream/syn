@@ -122,9 +122,15 @@ atom_expression = [
 
 expressions = [
     "expression",
-    "expressions, expression",
+    "expressions , expression",
 ]
 
 variable_definition = [
     "var identifier : type",
 ]
+
+[tokens]
+int_constant = "[0-9]+"
+log_constant = "(true|false)"
+str_constant = "'([\\x20-\\x26\\x28-\\x7E]|'')*('|$)"
+identifier = "[A-Za-z_]+[A-Za-z0-9_]*"

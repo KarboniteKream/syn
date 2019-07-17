@@ -4,14 +4,14 @@ use std::fmt::{self, Display, Formatter};
 
 use indexmap::IndexSet;
 
+use crate::grammar::Grammar;
+use crate::symbol::Symbol;
+use crate::util::{self, AsString};
+
 mod action;
 mod item;
 mod state;
 mod transition;
-
-use crate::grammar::Grammar;
-use crate::symbol::Symbol;
-use crate::util::{self, AsString};
 
 use action::Action;
 use item::Item;
