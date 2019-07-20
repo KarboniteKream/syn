@@ -1,19 +1,31 @@
 use std::fmt::{self, Display, Formatter};
 
+/// The `Symbol` enum describes an element of a grammar rule.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Symbol {
+    /// Start of the parse stack.
     Start,
+
+    /// End of the parse stack.
     End,
+
+    /// An empty symbol.
     Null,
+
+    /// A nonterminal symbol, which is replaced with a set of terminal symbols.
     NonTerminal(usize, String),
+
+    /// A terminal symbol, indicating a token in the input file.
     Terminal(usize, String),
 }
 
 impl Symbol {
-    pub fn builtin() -> Vec<Symbol> {
+    /// Returns a list of internal symbols.
+    pub fn internal() -> Vec<Symbol> {
         vec![Symbol::Start, Symbol::End, Symbol::Null]
     }
 
+    /// Returns the ID of the symbol.
     pub fn id(&self) -> usize {
         match self {
             Symbol::Start => 0,
@@ -23,6 +35,7 @@ impl Symbol {
         }
     }
 
+    /// Returns the name of the symbol.
     pub fn name(&self) -> String {
         match self {
             Symbol::Start => "^".to_owned(),
@@ -39,6 +52,7 @@ impl Symbol {
         }
     }
 
+    /// Returns `true` if the symbol is terminal.
     pub fn is_terminal(&self) -> bool {
         match self {
             Symbol::NonTerminal(..) => false,
@@ -46,11 +60,13 @@ impl Symbol {
         }
     }
 
+    /// Returns `true` if the symbol is nonterminal.
     pub fn is_nonterminal(&self) -> bool {
         !self.is_terminal()
     }
 
-    pub fn is_builtin(&self) -> bool {
+    /// Returns `true` if the symbol is internal.
+    pub fn is_internal(&self) -> bool {
         match self {
             Symbol::NonTerminal(..) | Symbol::Terminal(..) => false,
             _ => true,

@@ -2,6 +2,7 @@ use std::fmt::{self, Display, Formatter};
 
 use super::span::Span;
 
+/// The `Token` struct describes an element in the input file.
 #[derive(Clone, Debug)]
 pub struct Token {
     pub symbol: usize,
@@ -16,6 +17,11 @@ impl Token {
             lexeme,
             span,
         }
+    }
+
+    /// Returns the last character of the lexeme.
+    pub fn last(&self) -> Option<char> {
+        self.lexeme.chars().last()
     }
 }
 

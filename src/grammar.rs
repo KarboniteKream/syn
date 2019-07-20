@@ -13,15 +13,19 @@ mod reader;
 
 pub use reader::read_file;
 
+/// The `Grammar` struct describes a grammar to parse the input file with.
 #[derive(Clone, Debug)]
 pub struct Grammar {
     pub name: String,
     description: String,
     pub symbols: Vec<Symbol>,
+    // List of regular expressions for a specific symbol.
     tokens: Vec<(usize, Regex)>,
     start_symbol: usize,
     rules: Vec<Rule>,
+    // List of rules for a specific symbol.
     symbol_rules: HashMap<usize, Vec<usize>>,
+    // Cache for the `first()` method.
     first: RefCell<HashMap<usize, Vec<usize>>>,
 }
 
@@ -54,14 +58,17 @@ impl Grammar {
         }
     }
 
+    /// Returns the symbol with the specified ID.
     pub fn symbol(&self, id: usize) -> &Symbol {
         &self.symbols[id]
     }
 
+    /// Returns the rule with the specified ID.
     pub fn rule(&self, id: usize) -> &Rule {
         &self.rules[id]
     }
 
+    /// Returns the list of rules for the specified symbol.
     pub fn rules(&self, symbol: usize) -> Vec<&Rule> {
         self.symbol_rules[&symbol]
             .iter()
@@ -69,6 +76,7 @@ impl Grammar {
             .collect()
     }
 
+    /// Verifies if the grammar is valid.
     pub fn verify(&self) -> Result<(), Error> {
         if !self.symbol_rules.contains_key(&self.start_symbol) {
             return Err(Error::NoSymbol(self.symbol(self.start_symbol).clone()));
@@ -81,26 +89,30 @@ impl Grammar {
             .collect();
         nonterminals.insert(self.start_symbol);
 
+        // Verify that all nonterminal symbols are reachable from at least one rule.
         for id in self.symbol_rules.keys() {
             let symbol = self.symbol(*id);
 
-            if !symbol.is_builtin() && !nonterminals.contains(id) {
+            if !symbol.is_internal() && !nonterminals.contains(id) {
                 return Err(Error::Unreachable(symbol.clone()));
             }
         }
 
-        for (id, rules) in &self.symbol_rules {
-            let symbol = self.symbol(*id);
+        // Verify that no rule for a symbol is left-recursive.
+        for (head, rules) in &self.symbol_rules {
+            let symbol = self.symbol(*head);
 
-            if symbol.is_builtin() || rules.is_empty() {
+            if symbol.is_internal() || rules.is_empty() {
                 continue;
             }
 
-            if rules.iter().all(|rule| self.rule(*rule).body[0] == *id) {
+            // At least one rule must not start with the rule's head.
+            if rules.iter().all(|rule| self.rule(*rule).body[0] == *head) {
                 return Err(Error::LeftRecursive(symbol.clone()));
             }
         }
 
+        // All symbols with at least one rule with only terminal symbols are realizable.
         for rule in &self.rules {
             if rule.body.iter().all(|id| self.symbol(*id).is_terminal()) {
                 nonterminals.remove(&rule.head);
@@ -108,6 +120,8 @@ impl Grammar {
         }
 
         loop {
+            // Find symbols with at least one rule where
+            // all the nonterminal symbols are realizable.
             let realizable: HashSet<usize> = nonterminals
                 .iter()
                 .filter(|symbol| {
@@ -139,23 +153,27 @@ impl Grammar {
         Ok(())
     }
 
+    /// Returns the FIRST set of the specified symbol.
     pub fn first(&self, symbol: usize) -> Vec<usize> {
         if let Some(first) = self.first.borrow().get(&symbol) {
             return first.clone();
         }
 
-        let mut buffer = HashSet::new();
+        let mut result = HashSet::new();
+        let null = Symbol::Null.id();
 
+        // If the symbol is a terminal, it's the only member of the FIRST set.
         if self.symbol(symbol).is_terminal() {
-            buffer.insert(symbol);
-            return self.cache_first(symbol, &buffer);
+            result.insert(symbol);
+            return self.cache_first(symbol, &result);
         }
 
         if !self.symbol_rules.contains_key(&symbol) {
             return Vec::new();
         }
 
-        let null = Symbol::Null.id();
+        // Find FIRST set of all rules of the specified symbol (s).
+        // Start with the first symbol of each rule (h).
         let mut rules: Vec<(&Rule, usize)> = self.symbol_rules[&symbol]
             .iter()
             .map(|id| (self.rule(*id), 0))
@@ -163,59 +181,70 @@ impl Grammar {
 
         loop {
             for (rule, idx) in &mut rules {
-                let mut rule_buffer = HashSet::new();
+                let mut rule_result = HashSet::new();
 
                 for id in &rule.body[*idx..] {
                     *idx += 1;
 
+                    // If the nonterminal symbol is the rule head itself,
+                    // skip it until we can find the partial FIRST set.
                     if *id == symbol {
-                        rule_buffer.remove(&null);
+                        rule_result.remove(&null);
                         break;
                     }
 
                     let first: Vec<usize> = self.first(*id);
                     let has_null = first.contains(&null);
-                    rule_buffer.extend(first);
+                    rule_result.extend(first);
 
+                    // If FIRST(h) does not contain ϵ, remove it from FIRST(s).
                     if !has_null {
-                        rule_buffer.remove(&null);
+                        rule_result.remove(&null);
                         break;
                     }
                 }
 
-                buffer.extend(rule_buffer);
-                self.cache_first(symbol, &buffer);
+                // Cache current result to prevent an infinite loop.
+                result.extend(rule_result);
+                self.cache_first(symbol, &result);
             }
 
+            // If all symbols have been checked, or FIRST(s) does not contain ϵ, we're done.
             let all_done = rules.iter().all(|(rule, idx)| rule.body.len() == *idx);
-            let has_null = buffer.contains(&null);
+            let has_null = result.contains(&null);
 
             if all_done || !has_null {
                 break;
             }
         }
 
-        self.cache_first(symbol, &buffer)
+        self.cache_first(symbol, &result)
     }
 
+    /// Returns the FIRST set for a sequence of symbols.
     pub fn first_sequence(&self, symbols: &[usize]) -> Vec<usize> {
-        let mut buffer = HashSet::new();
+        let mut result = HashSet::new();
         let null = Symbol::Null.id();
 
         for symbol in symbols {
             let per_symbol = self.first(*symbol);
             let has_null = per_symbol.contains(&null);
-            buffer.extend(per_symbol);
+            result.extend(per_symbol);
 
             if !has_null {
-                buffer.remove(&null);
+                result.remove(&null);
                 break;
             }
         }
 
-        util::to_sorted_vec(buffer)
+        util::to_sorted_vec(result)
     }
 
+    /// Returns a symbol matching the specified text. The second return value
+    /// indicates whether the symbol is a full or a partial match.
+    ///
+    /// This method returns the first full match if it exists,
+    /// otherwise it returns the first partial match.
     pub fn find_symbol(&self, text: &str) -> Option<(usize, bool)> {
         let mut symbol = None;
 
@@ -225,6 +254,7 @@ impl Grammar {
                 None => continue,
             };
 
+            // If the last capture group is None or empty, the match is partial.
             let is_full_match = captures
                 .get(captures.len() - 1)
                 .map_or(false, |m| !m.as_str().is_empty());
@@ -241,8 +271,9 @@ impl Grammar {
         symbol
     }
 
-    fn cache_first(&self, symbol: usize, buffer: &HashSet<usize>) -> Vec<usize> {
-        let first = util::to_sorted_vec(buffer.clone());
+    /// Caches the FIRST set for the specified symbol.
+    fn cache_first(&self, symbol: usize, first: &HashSet<usize>) -> Vec<usize> {
+        let first = util::to_sorted_vec(first.clone());
         let mut cache = self.first.borrow_mut();
         cache.insert(symbol, first.clone());
         first

@@ -6,7 +6,11 @@ use crate::grammar::Grammar;
 use crate::symbol::Symbol;
 use crate::util::AsString;
 
-#[derive(Clone, Debug)]
+/// The `Rule` struct describes a grammar rule.
+///
+/// To ensure the relation between `Eq` and `Ord`, the fields
+/// in the struct _must_ be unique for a specific `id`.
+#[derive(Clone, Debug, Eq)]
 pub struct Rule {
     pub id: usize,
     pub head: usize,
@@ -18,6 +22,7 @@ impl Rule {
         Rule { id, head, body }
     }
 
+    /// Returns the set of nonterminal symbols in the rule body.
     pub fn nonterminals(&self, symbols: &[Symbol]) -> HashSet<usize> {
         self.body
             .iter()
@@ -32,8 +37,6 @@ impl PartialEq for Rule {
         self.head == other.head && self.body == other.body
     }
 }
-
-impl Eq for Rule {}
 
 impl PartialOrd for Rule {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {

@@ -13,7 +13,11 @@ use super::item::Item;
 use super::transition::ItemTransition;
 use super::Automaton;
 
-#[derive(Clone, Debug)]
+/// The `State` struct describes a state in the automaton.
+///
+/// To ensure the relation between `Eq` and `Ord`, the fields
+/// in the struct _must_ be unique for a specific `id`.
+#[derive(Clone, Debug, Eq)]
 pub struct State {
     pub id: usize,
     pub items: Vec<usize>,
@@ -24,6 +28,7 @@ impl State {
         State { id, items }
     }
 
+    /// Returns the list of transitions from the state.
     pub fn transitions(&self, items: &IndexSet<Item>) -> Vec<usize> {
         let transitions: HashSet<usize> = self
             .items
@@ -35,6 +40,7 @@ impl State {
         util::to_sorted_vec(transitions)
     }
 
+    /// Derives the next state with specified transition symbol.
     pub fn derive(
         &self,
         symbol: usize,
@@ -42,6 +48,8 @@ impl State {
         items: &mut IndexSet<Item>,
         state_id: usize,
     ) -> Option<(State, HashSet<ItemTransition>)> {
+        // Keep all items which can transition with the symbol
+        // and assign them a temporary index-based ID.
         let mut next_items: Vec<Item> = self
             .items
             .iter()
@@ -63,9 +71,13 @@ impl State {
 
         let mut transitions: HashSet<ItemTransition> = HashSet::new();
 
+        // The buffer contains unique and non-unique versions
+        // of items so we can find existing items easier.
         let mut buffer = HashSet::new();
         let mut queue = VecDeque::new();
 
+        // Generate initial transitions and derive the items.
+        // Assign them a new temporary index-based ID.
         for (idx, item) in next_items.iter_mut().enumerate() {
             transitions.insert(ItemTransition::new(
                 (self.id, item.id),
@@ -77,7 +89,7 @@ impl State {
             item.pass(grammar.rule(item.rule));
 
             if item.at_nonterminal(&grammar.symbols) {
-                queue.push_back(*item);
+                queue.push_back(item.id);
             }
 
             buffer.insert(*item);
@@ -87,14 +99,17 @@ impl State {
         }
 
         while let Some(item) = queue.pop_front() {
-            let mut item = item;
-            item.unique = next_items[item.id].unique;
+            let item = next_items[item];
 
             let head = item.head.unwrap();
             let tail = item.tail(grammar.rule(item.rule));
+            // Find the FIRST set of the symbol sequence
+            // that follows the current item's head.
             let lookaheads = grammar.first_sequence(&tail);
 
+            // Find all the grammar rules for the current item head.
             for rule in grammar.rules(head) {
+                // Derive a new item for all the symbols in the FIRST set.
                 for lookahead in &lookaheads {
                     let rule = Rule::new(rule.id, head, rule.body.clone());
                     let mut next_item = Item::new(next_items.len(), &rule, *lookahead, item.unique);
@@ -104,9 +119,9 @@ impl State {
                         Symbol::Null.id(),
                     );
 
+                    // If the item derives to an existing one, update it accordingly.
                     if let Some(existing) = buffer.get(&next_item) {
-                        let mut existing = *existing;
-                        existing.unique = next_items[existing.id].unique;
+                        let existing = next_items[existing.id];
 
                         transition.to.1 = existing.id;
                         transitions.insert(transition);
@@ -116,8 +131,10 @@ impl State {
                         }
 
                         if existing.id == item.id {
+                            // If the item derives itself, it's not unique.
                             next_items[existing.id].unique = false;
                         } else {
+                            // All its parents must be unique and represent the same rule.
                             let parents: Vec<&Item> = transitions
                                 .iter()
                                 .filter(|transition| transition.to.1 == existing.id)
@@ -132,6 +149,7 @@ impl State {
                             });
                         }
 
+                        // Recursively update its derived items.
                         if !next_items[existing.id].unique {
                             let mut non_unique = HashSet::new();
                             non_unique.insert(existing.id);
@@ -160,13 +178,15 @@ impl State {
                         continue;
                     }
 
+                    // If the item is at a nonterminal symbol, add it to the queue.
                     if next_item.at_nonterminal(&grammar.symbols) {
-                        queue.push_back(next_item);
+                        queue.push_back(next_item.id);
                     }
 
                     next_items.push(next_item);
                     transitions.insert(transition);
 
+                    // Add both variations to the buffer.
                     buffer.insert(next_item);
                     next_item.unique = !next_item.unique;
                     buffer.insert(next_item);
@@ -174,6 +194,7 @@ impl State {
             }
         }
 
+        // Update items with final unique IDs.
         let mut next_items: Vec<usize> = next_items
             .iter()
             .map(|item| {
@@ -189,6 +210,7 @@ impl State {
             })
             .collect();
 
+        // Update transitions with correct item IDs.
         let transitions = transitions
             .into_iter()
             .map(|ItemTransition { from, to, symbol }| {
@@ -234,8 +256,6 @@ impl PartialEq for State {
         self.items == other.items
     }
 }
-
-impl Eq for State {}
 
 impl PartialOrd for State {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {

@@ -1,6 +1,7 @@
 use crate::grammar::Grammar;
 use crate::util::AsString;
 
+/// The `Transition` struct describes an arbitrary transition in the automaton.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Transition<T> {
     pub from: T,
@@ -14,6 +15,7 @@ impl<T> Transition<T> {
     }
 }
 
+/// `StateTransition` describes a transition between two states in the automaton.
 pub type StateTransition = Transition<usize>;
 
 impl AsString for StateTransition {
@@ -23,6 +25,7 @@ impl AsString for StateTransition {
     }
 }
 
+/// `ItemTransition` describes a transition between two items in the automaton.
 pub type ItemTransition = Transition<(usize, usize)>;
 
 impl AsString for ItemTransition {

@@ -12,6 +12,7 @@ mod token;
 use span::Span;
 use token::Token;
 
+/// Returns the list of tokens in the input file using lexical analysis.
 pub fn parse_file(filename: &Path, grammar: &Grammar) -> Result<Vec<Token>, Error> {
     let source: Vec<char> = match fs::read_to_string(filename) {
         Ok(contents) => contents.chars().collect(),
@@ -34,18 +35,22 @@ pub fn parse_file(filename: &Path, grammar: &Grammar) -> Result<Vec<Token>, Erro
         text.push(ch);
         current_match = grammar.find_symbol(&text);
 
+        // There should always be at least a partial match.
         if current_match.is_none() && last_token.is_none() {
             return Err(Error::Token(text, span));
         }
 
+        // If there's no match for the current string, take the last match.
         if current_match.is_none() {
             let (token, end_idx) = last_token.unwrap();
 
+            // Ignore ϵ symbols.
             if token.symbol != Symbol::Null.id() {
                 tokens.push(token.clone());
             }
 
-            let ch = token.lexeme.chars().last().unwrap();
+            // Seek back to the end of the last match.
+            let ch = token.last().unwrap();
             position = advance(token.span.end, ch);
             idx = end_idx + 1;
 
@@ -56,6 +61,7 @@ pub fn parse_file(filename: &Path, grammar: &Grammar) -> Result<Vec<Token>, Erro
             continue;
         }
 
+        // Save the current full match.
         if let Some((id, true)) = current_match {
             let token = Token::new(id, text.clone(), span);
             last_token = Some((token, idx));
@@ -69,6 +75,7 @@ pub fn parse_file(filename: &Path, grammar: &Grammar) -> Result<Vec<Token>, Erro
     Ok(tokens)
 }
 
+/// Advances the position in the file based on the current character.
 fn advance(position: (usize, usize), ch: char) -> (usize, usize) {
     let (row, column) = position;
 

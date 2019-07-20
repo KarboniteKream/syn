@@ -11,6 +11,7 @@ use crate::grammar::Grammar;
 use crate::rule::Rule;
 use crate::symbol::Symbol;
 
+/// Read the specified file, and constructs the grammar.
 pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
     let contents = match fs::read_to_string(filename) {
         Ok(contents) => match contents.parse::<Value>() {
@@ -34,13 +35,14 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
         });
 
     let definitions = from_table(data, "rules", &Value::as_table)?;
+    // All L-values are considered nonterminal symbols.
     let nonterminals: HashSet<&str> = definitions.keys().map(String::as_str).collect();
 
     if definitions.is_empty() {
         return Err(Error::File("No rules defined".to_owned()));
     }
 
-    let mut symbols = Symbol::builtin();
+    let mut symbols = Symbol::internal();
     let start_symbol = symbols.len();
 
     symbols.push(Symbol::NonTerminal(
@@ -98,6 +100,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
 
     let mut tokens = Vec::new();
 
+    // Generate regular expressions for all terminal symbols.
     for symbol in &symbols {
         let (id, name) = match symbol {
             Symbol::Terminal(id, name) => (id, name),
@@ -134,6 +137,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
             Err(_) => return Err(Error::Regex(pattern)),
         };
 
+        // Replace the regular expression, generated from the symbol name.
         let idx = tokens.iter().position(|(id, _)| *id == symbol).unwrap();
         tokens.remove(idx);
         tokens.push((symbol, regex));
@@ -154,6 +158,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
             Err(_) => return Err(Error::Regex(pattern)),
         };
 
+        // All ignored tokens correspond to ϵ symbols.
         tokens.push((Symbol::Null.id(), regex));
     }
 
@@ -167,6 +172,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
     ))
 }
 
+/// Returns a value from a TOML table.
 fn from_table<'a, T: ?Sized>(
     data: &'a Map<String, Value>,
     key: &str,
@@ -178,6 +184,7 @@ fn from_table<'a, T: ?Sized>(
     }
 }
 
+/// Returns the symbol ID for the specified symbol name.
 fn get_symbol(
     name: &str,
     is_terminal: bool,

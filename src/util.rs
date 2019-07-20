@@ -2,6 +2,8 @@ use clap::{crate_authors, crate_name, crate_version, App, Arg, ArgMatches};
 
 use crate::grammar::Grammar;
 
+/// The `AsString` trait is used as an alternative to the `Display` trait,
+/// as it requires a `Grammar` argument to correctly format a struct.
 pub trait AsString {
     fn string(&self, grammar: &Grammar) -> String;
 }
@@ -12,6 +14,7 @@ impl<T: AsString> AsString for &T {
     }
 }
 
+/// Parses and validates command-line arguments.
 pub fn parse_args<'a>() -> ArgMatches<'a> {
     App::new(crate_name!())
         .version(crate_version!())
@@ -41,13 +44,15 @@ pub fn parse_args<'a>() -> ArgMatches<'a> {
         .get_matches()
 }
 
-pub fn get_index<T>(collection: &[T], value: T) -> usize
+/// Returns the index of an element in a Vec.
+pub fn get_index<T>(vec: &[T], value: T) -> usize
 where
     T: Eq,
 {
-    collection.iter().position(|item| *item == value).unwrap()
+    vec.iter().position(|item| *item == value).unwrap()
 }
 
+/// Converts a collection to a sorted Vec.
 pub fn to_sorted_vec<I, T>(collection: I) -> Vec<T>
 where
     I: IntoIterator<Item = T>,
@@ -58,6 +63,7 @@ where
     vec
 }
 
+/// Calls `AsString.string()` on iterator elements and joins them with `separator`.
 pub fn as_string<I, T>(iterator: I, grammar: &Grammar, separator: &str) -> String
 where
     I: Iterator<Item = T>,
