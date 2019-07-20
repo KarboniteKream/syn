@@ -18,7 +18,7 @@ pub struct Grammar {
     pub name: String,
     description: String,
     pub symbols: Vec<Symbol>,
-    pub tokens: Vec<(usize, Regex)>,
+    tokens: Vec<(usize, Regex)>,
     start_symbol: usize,
     rules: Vec<Rule>,
     symbol_rules: HashMap<usize, Vec<usize>>,
@@ -214,6 +214,31 @@ impl Grammar {
         }
 
         util::to_sorted_vec(buffer)
+    }
+
+    pub fn find_symbol(&self, text: &str) -> Option<(usize, bool)> {
+        let mut symbol = None;
+
+        for (id, regex) in &self.tokens {
+            let captures = match regex.captures(text) {
+                Some(captures) => captures,
+                None => continue,
+            };
+
+            let is_full_match = captures
+                .get(captures.len() - 1)
+                .map_or(false, |m| !m.as_str().is_empty());
+
+            if is_full_match {
+                return Some((*id, true));
+            }
+
+            if symbol.is_none() {
+                symbol = Some((*id, false));
+            }
+        }
+
+        symbol
     }
 
     fn cache_first(&self, symbol: usize, buffer: &HashSet<usize>) -> Vec<usize> {

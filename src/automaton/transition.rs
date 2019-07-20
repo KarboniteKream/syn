@@ -28,6 +28,7 @@ pub type ItemTransition = Transition<(usize, usize)>;
 impl AsString for ItemTransition {
     fn string(&self, grammar: &Grammar) -> String {
         let symbol = grammar.symbol(self.symbol);
+
         format!(
             "({}, {}) → ({}, {}) {}",
             self.from.0, self.from.1, self.to.0, self.to.1, symbol

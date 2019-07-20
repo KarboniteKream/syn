@@ -4,6 +4,7 @@ use std::process;
 
 mod automaton;
 mod grammar;
+mod parser;
 mod rule;
 mod symbol;
 mod util;
@@ -13,11 +14,11 @@ use automaton::Automaton;
 fn main() {
     let args = util::parse_args();
 
-    let filename = args.value_of("filename").unwrap();
+    let filename = args.value_of("grammar").unwrap();
     let grammar = match grammar::read_file(Path::new(filename)) {
         Ok(grammar) => grammar,
         Err(error) => {
-            eprintln!("File '{}' cannot be parsed: {}", filename, error);
+            eprintln!("Grammar file '{}' cannot be parsed: {}", filename, error);
             process::exit(1);
         }
     };
@@ -69,5 +70,19 @@ fn main() {
             eprintln!("Unable to save to file '{}': {}", output, error);
             process::exit(1);
         }
+    }
+
+    let filename = args.value_of("input").unwrap();
+    let tokens = match parser::parse_file(Path::new(filename), &grammar) {
+        Ok(tokens) => tokens,
+        Err(error) => {
+            eprintln!("Input file '{}' cannot be parsed: {}", filename, error);
+            process::exit(1);
+        }
+    };
+
+    println!("\nTOKENS");
+    for token in tokens {
+        println!("{}", token);
     }
 }

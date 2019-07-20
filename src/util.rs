@@ -17,8 +17,16 @@ pub fn parse_args<'a>() -> ArgMatches<'a> {
         .version(crate_version!())
         .author(crate_authors!())
         .arg(
-            Arg::with_name("filename")
+            Arg::with_name("input")
                 .value_name("INPUT")
+                .help("Input file name")
+                .required(true),
+        )
+        .arg(
+            Arg::with_name("grammar")
+                .long("grammar")
+                .short("g")
+                .value_name("GRAMMAR")
                 .help("Grammar file name")
                 .required(true),
         )
@@ -26,7 +34,7 @@ pub fn parse_args<'a>() -> ArgMatches<'a> {
             Arg::with_name("output")
                 .long("output")
                 .short("o")
-                .value_name("FILE")
+                .value_name("OUTPUT")
                 .help("Output file name")
                 .takes_value(true),
         )

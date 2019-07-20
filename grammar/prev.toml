@@ -132,5 +132,9 @@ variable_definition = [
 [tokens]
 int_constant = "[0-9]+"
 log_constant = "(true|false)"
-str_constant = "'([\\x20-\\x26\\x28-\\x7E]|'')*('|$)"
+str_constant = "'([ -&\\(-~]|'')*('|$)"
 identifier = "[A-Za-z_]+[A-Za-z0-9_]*"
+
+[ignore]
+whitespace = "[ \t\r\n]*"
+comment = "#.*(\n|$)"

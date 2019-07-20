@@ -12,7 +12,7 @@ use crate::rule::Rule;
 use crate::symbol::Symbol;
 
 pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
-    let value = match fs::read_to_string(filename) {
+    let contents = match fs::read_to_string(filename) {
         Ok(contents) => match contents.parse::<Value>() {
             Ok(value) => value,
             Err(error) => return Err(Error::File(error.to_string())),
@@ -20,8 +20,8 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
         Err(error) => return Err(Error::File(error.to_string())),
     };
 
-    let data: &Map<String, Value> = match value.as_table() {
-        Some(value) => value,
+    let data: &Map<String, Value> = match contents.as_table() {
+        Some(data) => data,
         None => return Err(Error::File("Not a Table".to_owned())),
     };
 
@@ -97,9 +97,6 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
     }
 
     let mut tokens = Vec::new();
-    let definitions = from_table(&data, "tokens", &Value::as_table)
-        .map(Map::clone)
-        .unwrap_or_default();
 
     for symbol in &symbols {
         let (id, name) = match symbol {
@@ -116,6 +113,10 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
 
         tokens.push((*id, regex));
     }
+
+    let definitions = from_table(&data, "tokens", &Value::as_table)
+        .map(Map::clone)
+        .unwrap_or_default();
 
     for (name, pattern) in definitions {
         let symbol = match names.get(&name) {
@@ -136,6 +137,24 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
         let idx = tokens.iter().position(|(id, _)| *id == symbol).unwrap();
         tokens.remove(idx);
         tokens.push((symbol, regex));
+    }
+
+    let definitions = from_table(&data, "ignore", &Value::as_table)
+        .map(Map::clone)
+        .unwrap_or_default();
+
+    for (name, pattern) in definitions {
+        let pattern = match pattern.as_str() {
+            Some(value) => format!("^{}$", value),
+            None => return Err(Error::Token(name.to_owned())),
+        };
+
+        let regex = match Regex::new(pattern.as_str()) {
+            Ok(pattern) => pattern,
+            Err(_) => return Err(Error::Regex(pattern)),
+        };
+
+        tokens.push((Symbol::Null.id(), regex));
     }
 
     Ok(Grammar::new(
@@ -194,7 +213,7 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            Error::File(error) => write!(f, "Cannot parse file {}", error),
+            Error::File(error) => write!(f, "Cannot read file {}", error),
             Error::Key(name) => write!(f, "Cannot parse key '{}'", name),
             Error::Regex(pattern) => write!(f, "Cannot parse expression /{}/", pattern),
             Error::Rule(name) => write!(f, "Cannot parse rule {}", name),

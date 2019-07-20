@@ -1,18 +1,19 @@
 # syn
 
+A syntax parser based on the [LLLR] method.
+
 ## Requirements
 - Rust 1.31.0 or later
 
 ## Usage
 ```bash
-cargo run grammar/<grammar>.toml [-o <grammar>.dot]
+syn <INPUT> -g GRAMMAR [-o OUTPUT]
 ```
 
-The `-o` argument is optional and specifies the desired output file for a graph in the
-[DOT](https://www.graphviz.org/doc/info/lang.html) language.
+The optional argument `-o` specifies the desired output file for a graph in the [DOT] language.
 
 ## Grammar
-Grammar files are defined using the [TOML](https://github.com/toml-lang/toml) format.
+Grammar files are defined using the [TOML] format.
 
 ### Header
 The header contains the following entries:
@@ -69,3 +70,18 @@ a = "(true|false)"
 b = "'[A-Z\\x61-\\x7A_]*('|$)"
 c = "[0-9]+"
 ```
+
+### Ignores
+Regular expressions in the `[ignore]` table define tokens that are ignored during syntax analysis.
+The patterns need to follow the rules for the `[tokens]` table.
+
+Example:
+```toml
+[ignore]
+whitespace = "[ \t\r\n]*"
+comment = "#.*(\n|$)"
+```
+
+[LLLR]: https://www.semanticscholar.org/paper/LLLR-Parsing%3A-a-Combination-of-LL-and-LR-Parsing-Slivnik/fac55d573ec8441673022e36f441ca278fc4a717
+[DOT]: https://www.graphviz.org/doc/info/lang.html
+[TOML]: https://github.com/toml-lang/toml

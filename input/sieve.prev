@@ -1,0 +1,21 @@
+typ arr_log : arr [500] logical;
+var sieve:arr_log;
+var i:integer;
+
+fun main(argc:identifer):integer = (
+  # comment 1
+  {sieve[0] = false},
+  {sieve[1] = false},
+  {for i=2,500,1 : # comment 2
+    {sieve[i] = true}},
+  {for i=2,sqrt(500)+1,1 :
+    {if sieve[i] then (
+      {j = i*i},
+      {while j < 500 : (
+        {sieve[j] = false},
+        {j = j+i})}{where var j:integer})}},
+  {for i=2,500,1 :
+    {if sieve[i] then
+      printf('%d ', i)}},
+  printf('\n'),
+  0)
