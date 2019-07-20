@@ -47,7 +47,7 @@ impl State {
             .iter()
             .enumerate()
             .map(|(idx, id)| {
-                let mut item = items.get_index(*id).unwrap().clone();
+                let mut item = *items.get_index(*id).unwrap();
                 item.id = idx;
                 item
             })
@@ -77,11 +77,11 @@ impl State {
             item.pass(grammar.rule(item.rule));
 
             if item.at_nonterminal(&grammar.symbols) {
-                queue.push_back(item.clone());
+                queue.push_back(*item);
             }
 
-            buffer.insert(item.clone());
-            let mut item = item.clone();
+            buffer.insert(*item);
+            let mut item = *item;
             item.unique = !item.unique;
             buffer.insert(item);
         }
@@ -105,7 +105,7 @@ impl State {
                     );
 
                     if let Some(existing) = buffer.get(&next_item) {
-                        let mut existing = existing.clone();
+                        let mut existing = *existing;
                         existing.unique = next_items[existing.id].unique;
 
                         transition.to.1 = existing.id;
@@ -161,13 +161,13 @@ impl State {
                     }
 
                     if next_item.at_nonterminal(&grammar.symbols) {
-                        queue.push_back(next_item.clone());
+                        queue.push_back(next_item);
                     }
 
-                    next_items.push(next_item.clone());
+                    next_items.push(next_item);
                     transitions.insert(transition);
 
-                    buffer.insert(next_item.clone());
+                    buffer.insert(next_item);
                     next_item.unique = !next_item.unique;
                     buffer.insert(next_item);
                 }
@@ -182,7 +182,7 @@ impl State {
                 }
 
                 let id = items.len();
-                let mut item = item.clone();
+                let mut item = *item;
                 item.id = id;
                 items.insert(item);
                 id
@@ -218,7 +218,7 @@ impl State {
             .iter()
             .enumerate()
             .map(|(idx, id)| {
-                let mut item = automaton.items[*id].clone();
+                let mut item = automaton.items[*id];
                 item.id = idx;
                 item.string(&automaton.grammar)
             })

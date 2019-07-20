@@ -6,7 +6,7 @@ use crate::rule::Rule;
 use crate::symbol::Symbol;
 use crate::util::AsString;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Item {
     pub id: usize,
     pub rule: usize,

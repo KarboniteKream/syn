@@ -25,15 +25,15 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
         None => return Err(Error::File("Not a Table".to_owned())),
     };
 
-    let name = from_table(&data, "name", &Value::as_str)?.to_owned();
-    let description = from_table(&data, "description", &Value::as_str)
-        .map(&str::to_owned)
+    let name = from_table(data, "name", &Value::as_str)?.to_owned();
+    let description = from_table(data, "description", &Value::as_str)
+        .map(str::to_owned)
         .unwrap_or_else(|_| {
             let path = filename.canonicalize().unwrap();
             path.into_os_string().into_string().unwrap()
         });
 
-    let definitions = from_table(&data, "rules", &Value::as_table)?;
+    let definitions = from_table(data, "rules", &Value::as_table)?;
     let nonterminals: HashSet<&str> = definitions.keys().map(String::as_str).collect();
 
     if definitions.is_empty() {
@@ -45,7 +45,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
 
     symbols.push(Symbol::NonTerminal(
         start_symbol,
-        from_table(&data, "start_symbol", &Value::as_str)
+        from_table(data, "start_symbol", &Value::as_str)
             .unwrap_or_else(|_| definitions.keys().next().unwrap())
             .to_owned(),
     ));
@@ -114,7 +114,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
         tokens.push((*id, regex));
     }
 
-    let definitions = from_table(&data, "tokens", &Value::as_table)
+    let definitions = from_table(data, "tokens", &Value::as_table)
         .map(Map::clone)
         .unwrap_or_default();
 
@@ -139,7 +139,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
         tokens.push((symbol, regex));
     }
 
-    let definitions = from_table(&data, "ignore", &Value::as_table)
+    let definitions = from_table(data, "ignore", &Value::as_table)
         .map(Map::clone)
         .unwrap_or_default();
 

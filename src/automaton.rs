@@ -36,7 +36,7 @@ impl Automaton {
         let mut item_transitions = HashSet::new();
 
         let initial_state = State::new(0, vec![0]);
-        states.insert(initial_state.clone());
+        states.insert(initial_state);
         items.insert(Item::new(0, grammar.rule(0), Symbol::Null.id(), true));
         queue.push_back((0, Symbol::End.id()));
 
@@ -100,7 +100,7 @@ impl Automaton {
 
         for state in &self.states {
             for id in &state.items {
-                let item = &self.items[*id];
+                let item = self.items[*id];
 
                 if item.can_accept() {
                     action_table.insert((state.id, Symbol::End.id()), Action::Accept);
@@ -141,7 +141,7 @@ impl Automaton {
             .iter()
             .flat_map(|state| {
                 state.items.iter().fold(HashMap::new(), |mut acc, id| {
-                    let item = &self.items[*id];
+                    let item = self.items[*id];
                     let follow = item.follow(self.grammar.rule(item.rule));
 
                     for symbol in self.grammar.first_sequence(&follow) {
@@ -181,7 +181,7 @@ impl Automaton {
                     .iter()
                     .enumerate()
                     .map(|(idx, id)| {
-                        let mut item = self.items[*id].clone();
+                        let mut item = self.items[*id];
                         item.id = idx;
 
                         let label = item.string(&self.grammar).replace("\"", "\\\"");

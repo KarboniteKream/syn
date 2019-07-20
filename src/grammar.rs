@@ -155,11 +155,11 @@ impl Grammar {
             return Vec::new();
         }
 
+        let null = Symbol::Null.id();
         let mut rules: Vec<(&Rule, usize)> = self.symbol_rules[&symbol]
             .iter()
             .map(|id| (self.rule(*id), 0))
             .collect();
-        let null = Symbol::Null.id();
 
         loop {
             for (rule, idx) in &mut rules {
