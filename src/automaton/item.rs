@@ -47,7 +47,7 @@ impl Item {
             self.dot += 1;
 
             self.head = match rule.body.get(self.dot) {
-                Some(id) => Some(*id),
+                Some(&id) => Some(id),
                 None => None,
             };
         }
@@ -145,7 +145,7 @@ impl AsString for Item {
         } else {
             rule.body
                 .iter()
-                .map(|id| grammar.symbol(*id).to_string())
+                .map(|&id| grammar.symbol(id).to_string())
                 .collect()
         };
 

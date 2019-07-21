@@ -71,7 +71,7 @@ b = "'[A-Z\\x61-\\x7A_]*('|$)"
 c = "[0-9]+"
 ```
 
-### Ignores
+### Ignored tokens
 Regular expressions in the `[ignore]` table define tokens that are ignored during syntax analysis.
 The patterns need to follow the rules for the `[tokens]` table.
 

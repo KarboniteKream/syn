@@ -15,5 +15,11 @@ T = [
 
 F = [
     "( E )",
-    "id",
+    "int",
 ]
+
+[tokens]
+int = "[0-9]+"
+
+[ignore]
+whitespace = "[ \t\r\n]*"

@@ -72,7 +72,7 @@ impl Grammar {
     pub fn rules(&self, symbol: usize) -> Vec<&Rule> {
         self.symbol_rules[&symbol]
             .iter()
-            .map(|id| self.rule(*id))
+            .map(|&id| self.rule(id))
             .collect()
     }
 
@@ -90,31 +90,31 @@ impl Grammar {
         nonterminals.insert(self.start_symbol);
 
         // Verify that all nonterminal symbols are reachable from at least one rule.
-        for id in self.symbol_rules.keys() {
-            let symbol = self.symbol(*id);
+        for &id in self.symbol_rules.keys() {
+            let symbol = self.symbol(id);
 
-            if !symbol.is_internal() && !nonterminals.contains(id) {
+            if !symbol.is_internal() && !nonterminals.contains(&id) {
                 return Err(Error::Unreachable(symbol.clone()));
             }
         }
 
         // Verify that no rule for a symbol is left-recursive.
-        for (head, rules) in &self.symbol_rules {
-            let symbol = self.symbol(*head);
+        for (&head, rules) in &self.symbol_rules {
+            let symbol = self.symbol(head);
 
             if symbol.is_internal() || rules.is_empty() {
                 continue;
             }
 
             // At least one rule must not start with the rule's head.
-            if rules.iter().all(|rule| self.rule(*rule).body[0] == *head) {
+            if rules.iter().all(|&rule| self.rule(rule).body[0] == head) {
                 return Err(Error::LeftRecursive(symbol.clone()));
             }
         }
 
         // All symbols with at least one rule with only terminal symbols are realizable.
         for rule in &self.rules {
-            if rule.body.iter().all(|id| self.symbol(*id).is_terminal()) {
+            if rule.body.iter().all(|&id| self.symbol(id).is_terminal()) {
                 nonterminals.remove(&rule.head);
             }
         }
@@ -125,8 +125,8 @@ impl Grammar {
             let realizable: HashSet<usize> = nonterminals
                 .iter()
                 .filter(|symbol| {
-                    self.symbol_rules[symbol].iter().any(|id| {
-                        self.rule(*id)
+                    self.symbol_rules[symbol].iter().any(|&id| {
+                        self.rule(id)
                             .nonterminals(&self.symbols)
                             .is_disjoint(&nonterminals)
                     })
@@ -176,24 +176,24 @@ impl Grammar {
         // Start with the first symbol of each rule (h).
         let mut rules: Vec<(&Rule, usize)> = self.symbol_rules[&symbol]
             .iter()
-            .map(|id| (self.rule(*id), 0))
+            .map(|&id| (self.rule(id), 0))
             .collect();
 
         loop {
             for (rule, idx) in &mut rules {
                 let mut rule_result = HashSet::new();
 
-                for id in &rule.body[*idx..] {
+                for &id in &rule.body[*idx..] {
                     *idx += 1;
 
                     // If the nonterminal symbol is the rule head itself,
                     // skip it until we can find the partial FIRST set.
-                    if *id == symbol {
+                    if id == symbol {
                         rule_result.remove(&null);
                         break;
                     }
 
-                    let first: Vec<usize> = self.first(*id);
+                    let first: Vec<usize> = self.first(id);
                     let has_null = first.contains(&null);
                     rule_result.extend(first);
 
@@ -210,7 +210,7 @@ impl Grammar {
             }
 
             // If all symbols have been checked, or FIRST(s) does not contain ϵ, we're done.
-            let all_done = rules.iter().all(|(rule, idx)| rule.body.len() == *idx);
+            let all_done = rules.iter().all(|&(rule, idx)| rule.body.len() == idx);
             let has_null = result.contains(&null);
 
             if all_done || !has_null {
@@ -226,8 +226,8 @@ impl Grammar {
         let mut result = HashSet::new();
         let null = Symbol::Null.id();
 
-        for symbol in symbols {
-            let per_symbol = self.first(*symbol);
+        for &symbol in symbols {
+            let per_symbol = self.first(symbol);
             let has_null = per_symbol.contains(&null);
             result.extend(per_symbol);
 

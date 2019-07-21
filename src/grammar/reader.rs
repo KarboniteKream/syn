@@ -103,7 +103,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
     // Generate regular expressions for all terminal symbols.
     for symbol in &symbols {
         let (id, name) = match symbol {
-            Symbol::Terminal(id, name) => (id, name),
+            Symbol::Terminal(id, name) => (*id, name),
             _ => continue,
         };
 
@@ -114,7 +114,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
             Err(_) => return Err(Error::Regex(pattern)),
         };
 
-        tokens.push((*id, regex));
+        tokens.push((id, regex));
     }
 
     let definitions = from_table(data, "tokens", &Value::as_table)
@@ -123,7 +123,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
 
     for (name, pattern) in definitions {
         let symbol = match names.get(&name) {
-            Some(symbol) => *symbol,
+            Some(&symbol) => symbol,
             None => continue,
         };
 
@@ -138,7 +138,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
         };
 
         // Replace the regular expression, generated from the symbol name.
-        let idx = tokens.iter().position(|(id, _)| *id == symbol).unwrap();
+        let idx = tokens.iter().position(|&(id, _)| id == symbol).unwrap();
         tokens.remove(idx);
         tokens.push((symbol, regex));
     }
@@ -191,8 +191,8 @@ fn get_symbol(
     names: &mut HashMap<String, usize>,
     symbols: &mut Vec<Symbol>,
 ) -> usize {
-    if let Some(id) = names.get(name) {
-        return *id;
+    if let Some(&id) = names.get(name) {
+        return id;
     }
 
     let id = symbols.len();

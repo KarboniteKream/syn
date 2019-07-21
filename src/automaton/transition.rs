@@ -21,7 +21,7 @@ pub type StateTransition = Transition<usize>;
 impl AsString for StateTransition {
     fn string(&self, grammar: &Grammar) -> String {
         let symbol = grammar.symbol(self.symbol);
-        format!("{} → {} {}", self.from, self.to, symbol)
+        format!("{}, {} → {}", self.from, symbol, self.to)
     }
 }
 
@@ -33,8 +33,8 @@ impl AsString for ItemTransition {
         let symbol = grammar.symbol(self.symbol);
 
         format!(
-            "({}, {}) → ({}, {}) {}",
-            self.from.0, self.from.1, self.to.0, self.to.1, symbol
+            "({}, {}), {} → ({}, {})",
+            self.from.0, self.from.1, symbol, self.to.0, self.to.1
         )
     }
 }

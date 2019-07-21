@@ -101,16 +101,16 @@ impl Automaton {
         let mut action_table: HashMap<(usize, usize), Action> = self
             .state_transitions
             .iter()
-            .filter_map(|transition| match self.grammar.symbol(transition.symbol) {
-                Symbol::Terminal(..) => Some(*transition),
+            .filter_map(|&transition| match self.grammar.symbol(transition.symbol) {
+                Symbol::Terminal(..) => Some(transition),
                 _ => None,
             })
             .map(|StateTransition { from, to, symbol }| ((from, symbol), Action::Shift(to)))
             .collect();
 
         for state in &self.states {
-            for id in &state.items {
-                let item = self.items[*id];
+            for &id in &state.items {
+                let item = self.items[id];
 
                 // Accept actions have precedence.
                 if item.can_accept() {
@@ -141,8 +141,8 @@ impl Automaton {
     pub fn goto_table(&self) -> HashMap<(usize, usize), usize> {
         self.state_transitions
             .iter()
-            .filter_map(|transition| match self.grammar.symbol(transition.symbol) {
-                Symbol::NonTerminal(..) => Some(*transition),
+            .filter_map(|&transition| match self.grammar.symbol(transition.symbol) {
+                Symbol::NonTerminal(..) => Some(transition),
                 _ => None,
             })
             .map(|StateTransition { from, to, symbol }| ((from, symbol), to))
@@ -157,8 +157,8 @@ impl Automaton {
         self.states
             .iter()
             .flat_map(|state| {
-                state.items.iter().fold(HashMap::new(), |mut acc, id| {
-                    let item = self.items[*id];
+                state.items.iter().fold(HashMap::new(), |mut acc, &id| {
+                    let item = self.items[id];
 
                     // Find the FIRST set of the an item's follow sequence.
                     let sequence = item.follow(self.grammar.rule(item.rule));
@@ -209,8 +209,8 @@ impl Automaton {
                     .items
                     .iter()
                     .enumerate()
-                    .map(|(idx, id)| {
-                        let mut item = self.items[*id];
+                    .map(|(idx, &id)| {
+                        let mut item = self.items[id];
                         item.id = idx;
 
                         let label = item.string(&self.grammar).replace("\"", "\\\"");
@@ -228,10 +228,10 @@ impl Automaton {
         let state_transitions = self
             .state_transitions
             .iter()
-            .map(|StateTransition { from, to, symbol }| {
+            .map(|&StateTransition { from, to, symbol }| {
                 let label = self
                     .grammar
-                    .symbol(*symbol)
+                    .symbol(symbol)
                     .to_string()
                     .replace("\"", "\\\"");
                 format!("    {} -> {} [label=\"{}\"];", from, to, label)
@@ -243,11 +243,11 @@ impl Automaton {
         let item_transitions = self
             .item_transitions
             .iter()
-            .map(|ItemTransition { from, to, symbol }| {
+            .map(|&ItemTransition { from, to, symbol }| {
                 let from_item = util::get_index(&self.states[from.0].items, from.1);
                 let to_item = util::get_index(&self.states[to.0].items, to.1);
 
-                let color = if *symbol == Symbol::Null.id() {
+                let color = if symbol == Symbol::Null.id() {
                     if from_item < to_item {
                         "crimson"
                     } else {

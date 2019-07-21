@@ -33,8 +33,8 @@ impl State {
         let transitions: HashSet<usize> = self
             .items
             .iter()
-            .filter_map(|id| items.get_index(*id).unwrap().head)
-            .filter(|head| *head != Symbol::Null.id())
+            .filter_map(|&id| items.get_index(id).unwrap().head)
+            .filter(|&head| head != Symbol::Null.id())
             .collect();
 
         util::to_sorted_vec(transitions)
@@ -54,8 +54,8 @@ impl State {
             .items
             .iter()
             .enumerate()
-            .map(|(idx, id)| {
-                let mut item = *items.get_index(*id).unwrap();
+            .map(|(idx, &id)| {
+                let mut item = *items.get_index(id).unwrap();
                 item.id = idx;
                 item
             })
@@ -92,8 +92,8 @@ impl State {
                 queue.push_back(item.id);
             }
 
-            buffer.insert(*item);
             let mut item = *item;
+            buffer.insert(item);
             item.unique = !item.unique;
             buffer.insert(item);
         }
@@ -110,9 +110,9 @@ impl State {
             // Find all the grammar rules for the current item head.
             for rule in grammar.rules(head) {
                 // Derive a new item for all the symbols in the FIRST set.
-                for lookahead in &lookaheads {
+                for &lookahead in &lookaheads {
                     let rule = Rule::new(rule.id, head, rule.body.clone());
-                    let mut next_item = Item::new(next_items.len(), &rule, *lookahead, item.unique);
+                    let mut next_item = Item::new(next_items.len(), &rule, lookahead, item.unique);
                     let mut transition = ItemTransition::new(
                         (state_id, item.id),
                         (state_id, next_item.id),
@@ -169,8 +169,8 @@ impl State {
                                     break;
                                 }
 
-                                for id in &non_unique {
-                                    next_items[*id].unique = false;
+                                for &id in &non_unique {
+                                    next_items[id].unique = false;
                                 }
                             }
                         }
@@ -239,8 +239,8 @@ impl State {
             .items
             .iter()
             .enumerate()
-            .map(|(idx, id)| {
-                let mut item = automaton.items[*id];
+            .map(|(idx, &id)| {
+                let mut item = automaton.items[id];
                 item.id = idx;
                 item.string(&automaton.grammar)
             })

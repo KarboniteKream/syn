@@ -26,7 +26,7 @@ impl Rule {
     pub fn nonterminals(&self, symbols: &[Symbol]) -> HashSet<usize> {
         self.body
             .iter()
-            .filter(|id| symbols[**id].is_nonterminal())
+            .filter(|&&id| symbols[id].is_nonterminal())
             .cloned()
             .collect()
     }
@@ -63,7 +63,7 @@ impl AsString for Rule {
         let body: Vec<String> = self
             .body
             .iter()
-            .map(|id| grammar.symbol(*id).to_string())
+            .map(|&id| grammar.symbol(id).to_string())
             .collect();
 
         format!("({}) {} → {}", self.id, head, body.join(" "))

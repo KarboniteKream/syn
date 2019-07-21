@@ -26,7 +26,7 @@ type = [
     "logical",
     "integer",
     "string",
-    "arr [ int_const ] type",
+    "arr [ int_constant ] type",
     "rec { components }",
     "^ type",
 ]
