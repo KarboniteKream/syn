@@ -54,7 +54,7 @@ fn main() {
     }
 
     let filename = args.value_of("input").unwrap();
-    let tokens = match parser::parse_file(Path::new(filename), &grammar) {
+    let tokens = match parser::parse_file(Path::new(filename), &grammar, &data) {
         Ok(tokens) => tokens,
         Err(error) => {
             eprintln!("Input file '{}' cannot be parsed: {}", filename, error);

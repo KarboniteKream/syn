@@ -1,8 +1,10 @@
+use std::collections::VecDeque;
 use std::error;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::Path;
 
+use crate::automaton::{Action, Data};
 use crate::grammar::Grammar;
 use crate::symbol::Symbol;
 
@@ -12,9 +14,68 @@ mod token;
 use span::Span;
 use token::Token;
 
-/// Parses the input file and returns a list of tokens.
-pub fn parse_file(filename: &Path, grammar: &Grammar) -> Result<Vec<Token>, Error> {
-    get_tokens(filename, grammar)
+/// Parses the input file using a LR(1) parser and returns the list of tokens.
+pub fn parse_file(filename: &Path, grammar: &Grammar, data: &Data) -> Result<Vec<Token>, Error> {
+    let tokens = get_tokens(filename, grammar)?;
+
+    if tokens.is_empty() {
+        return Ok(tokens);
+    }
+
+    let mut input: VecDeque<Token> = tokens.iter().cloned().collect();
+    let mut stack = vec![(0, 0)];
+    let mut is_valid = false;
+
+    let delimiter = Token::new(Symbol::End.id(), Symbol::End.name(), Span::default());
+    input.push_front(delimiter.clone());
+    input.push_back(delimiter);
+
+    while !input.is_empty() && !stack.is_empty() {
+        let &(_, state) = stack.last().unwrap();
+        let token = input.front().unwrap();
+        let action = data.action_table.get(&(state, token.symbol));
+
+        if action.is_none() {
+            return Err(Error::Parse(token.clone()));
+        }
+
+        match action.unwrap() {
+            Action::Shift(state) => {
+                stack.push((token.symbol, *state));
+                input.pop_front();
+            }
+            Action::Reduce(rule) => {
+                let rule = grammar.rule(*rule);
+
+                for id in rule.body.iter().rev() {
+                    if stack.pop().filter(|(symbol, _)| symbol == id).is_none() {
+                        return Err(Error::Internal);
+                    }
+                }
+
+                let &(_, state) = stack.last().unwrap();
+                let state = match data.goto_table.get(&(state, rule.head)) {
+                    Some(&state) => state,
+                    None => return Err(Error::Internal),
+                };
+
+                stack.push((rule.head, state));
+            }
+            Action::Accept => {
+                is_valid = true;
+                break;
+            }
+        }
+    }
+
+    if !is_valid {
+        return match input.pop_front() {
+            Some(token) => Err(Error::Parse(token)),
+            None => Err(Error::Internal),
+        };
+    }
+
+    Ok(tokens)
 }
 
 /// Returns the list of tokens in the input file using lexical analysis.
@@ -77,12 +138,6 @@ fn get_tokens(filename: &Path, grammar: &Grammar) -> Result<Vec<Token>, Error> {
         idx += 1;
     }
 
-    tokens.push(Token::new(
-        Symbol::End.id(),
-        Symbol::End.name(),
-        Span::new(position),
-    ));
-
     Ok(tokens)
 }
 
@@ -100,6 +155,8 @@ fn advance(position: (usize, usize), ch: char) -> (usize, usize) {
 #[derive(Debug)]
 pub enum Error {
     File(String),
+    Internal,
+    Parse(Token),
     Token(String, Span),
 }
 
@@ -107,9 +164,11 @@ impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             Error::File(error) => write!(f, "Cannot read file {}", error),
-            Error::Token(text, span) => {
-                let text = text.escape_default();
-                write!(f, "Cannot parse token '{}' @ {}", text, span)
+            Error::Internal => write!(f, "Internal error"),
+            Error::Parse(token) => write!(f, "Unexpected token {}", token),
+            Error::Token(lexeme, span) => {
+                let lexeme = lexeme.escape_default();
+                write!(f, "Cannot recognize token '{}' @ {}", lexeme, span)
             }
         }
     }

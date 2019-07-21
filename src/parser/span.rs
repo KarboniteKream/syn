@@ -2,7 +2,7 @@ use std::fmt::{self, Display, Formatter};
 
 /// The `Span` struct denotes the location of a `Token` in a source file.
 /// The position is indicated by a row and a column number.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Span {
     pub start: (usize, usize),
     pub end: (usize, usize),

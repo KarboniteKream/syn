@@ -14,8 +14,9 @@ mod item;
 mod state;
 mod transition;
 
-use action::Action;
-use data::Data;
+pub use action::Action;
+pub use data::Data;
+
 use item::Item;
 use state::State;
 use transition::{ItemTransition, StateTransition};
@@ -193,7 +194,7 @@ impl Automaton {
             .state_transitions
             .iter()
             .filter_map(|&transition| match self.grammar.symbol(transition.symbol) {
-                Symbol::Terminal(..) => Some(transition),
+                Symbol::Terminal(..) | Symbol::End => Some(transition),
                 _ => None,
             })
             .map(|StateTransition { from, to, symbol }| ((from, symbol), Action::Shift(to)))
