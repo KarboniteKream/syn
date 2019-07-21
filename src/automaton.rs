@@ -9,11 +9,13 @@ use crate::symbol::Symbol;
 use crate::util::{self, AsString};
 
 mod action;
+mod data;
 mod item;
 mod state;
 mod transition;
 
 use action::Action;
+use data::Data;
 use item::Item;
 use state::State;
 use transition::{ItemTransition, StateTransition};
@@ -95,106 +97,14 @@ impl Automaton {
         }
     }
 
-    /// Returns the ACTION table of the automaton.
-    pub fn action_table(&self) -> Result<HashMap<(usize, usize), Action>, Error> {
-        // All transitions with terminal symbols correspond to a Shift action.
-        let mut action_table: HashMap<(usize, usize), Action> = self
-            .state_transitions
-            .iter()
-            .filter_map(|&transition| match self.grammar.symbol(transition.symbol) {
-                Symbol::Terminal(..) => Some(transition),
-                _ => None,
-            })
-            .map(|StateTransition { from, to, symbol }| ((from, symbol), Action::Shift(to)))
-            .collect();
-
-        for state in &self.states {
-            for &id in &state.items {
-                let item = self.items[id];
-
-                // Accept actions have precedence.
-                if item.can_accept() {
-                    action_table.insert((state.id, Symbol::End.id()), Action::Accept);
-                    continue;
-                }
-
-                if !item.can_reduce() {
-                    continue;
-                }
-
-                let key = (state.id, item.lookahead);
-
-                // Every symbol in each state can only correspond to one action.
-                if action_table.contains_key(&key) {
-                    let symbol = self.grammar.symbol(key.1).clone();
-                    return Err(Error::ActionConflict(key.0, symbol));
-                }
-
-                action_table.insert(key, Action::Reduce(item.rule));
-            }
-        }
-
-        Ok(action_table)
-    }
-
-    /// Returns the GOTO table of the automaton.
-    pub fn goto_table(&self) -> HashMap<(usize, usize), usize> {
-        self.state_transitions
-            .iter()
-            .filter_map(|&transition| match self.grammar.symbol(transition.symbol) {
-                Symbol::NonTerminal(..) => Some(transition),
-                _ => None,
-            })
-            .map(|StateTransition { from, to, symbol }| ((from, symbol), to))
-            .collect()
-    }
-
-    /// Returns the UNIQUE table of the automaton.
-    ///
-    /// The UNIQUE table describes which item a symbol in a state corresponds to.
-    /// A symbol corresponds to an item, if it's in its FIRST set.
-    pub fn unique_table(&self) -> HashMap<(usize, usize), usize> {
-        self.states
-            .iter()
-            .flat_map(|state| {
-                state.items.iter().fold(HashMap::new(), |mut acc, &id| {
-                    let item = self.items[id];
-
-                    // Find the FIRST set of the an item's follow sequence.
-                    let sequence = item.follow(self.grammar.rule(item.rule));
-                    let first = self.grammar.first_sequence(&sequence);
-
-                    for symbol in first {
-                        acc.entry((state.id, symbol))
-                            .or_insert_with(Vec::new)
-                            .push(item);
-                    }
-
-                    acc
-                })
-            })
-            .filter(|(_, items)| {
-                // The UNIQUE table only contains symbols
-                // that correspond to a single, unique item.
-                items.len() == 1 && items[0].unique
-            })
-            .map(|(key, items)| (key, items[0].id))
-            .collect()
-    }
-
-    /// Returns the PARSE table of the automaton.
-    /// It describes reverse state transitions between items.
-    pub fn parse_table(&self) -> HashMap<(usize, usize), usize> {
-        self.item_transitions
-            .iter()
-            .map(|ItemTransition { from, to, .. }| {
-                let state = to.0;
-                let from = util::get_index(&self.states[from.0].items, from.1);
-                let to = util::get_index(&self.states[to.0].items, to.1);
-
-                ((to, state), from)
-            })
-            .collect()
+    /// Returns all automaton data tables.
+    pub fn data(&self) -> Result<Data, Error> {
+        Ok(Data {
+            action_table: self.action_table()?,
+            goto_table: self.goto_table(),
+            unique_table: self.unique_table(),
+            parse_table: self.parse_table(),
+        })
     }
 
     /// Converts the automaton to the DOT format.
@@ -274,6 +184,108 @@ impl Automaton {
             "digraph {} {{\n{}\n\n{}\n\n{}\n\n{}\n}}",
             self.grammar.name, attributes, states, state_transitions, item_transitions
         )
+    }
+
+    /// Returns the ACTION table of the automaton.
+    fn action_table(&self) -> Result<HashMap<(usize, usize), Action>, Error> {
+        // All transitions with terminal symbols correspond to a Shift action.
+        let mut action_table: HashMap<(usize, usize), Action> = self
+            .state_transitions
+            .iter()
+            .filter_map(|&transition| match self.grammar.symbol(transition.symbol) {
+                Symbol::Terminal(..) => Some(transition),
+                _ => None,
+            })
+            .map(|StateTransition { from, to, symbol }| ((from, symbol), Action::Shift(to)))
+            .collect();
+
+        for state in &self.states {
+            for &id in &state.items {
+                let item = self.items[id];
+
+                // Accept actions have precedence.
+                if item.can_accept() {
+                    action_table.insert((state.id, Symbol::End.id()), Action::Accept);
+                    continue;
+                }
+
+                if !item.can_reduce() {
+                    continue;
+                }
+
+                let key = (state.id, item.lookahead);
+
+                // Every symbol in each state can only correspond to one action.
+                if action_table.contains_key(&key) {
+                    let symbol = self.grammar.symbol(key.1).clone();
+                    return Err(Error::ActionConflict(key.0, symbol));
+                }
+
+                action_table.insert(key, Action::Reduce(item.rule));
+            }
+        }
+
+        Ok(action_table)
+    }
+
+    /// Returns the GOTO table of the automaton.
+    fn goto_table(&self) -> HashMap<(usize, usize), usize> {
+        self.state_transitions
+            .iter()
+            .filter_map(|&transition| match self.grammar.symbol(transition.symbol) {
+                Symbol::NonTerminal(..) => Some(transition),
+                _ => None,
+            })
+            .map(|StateTransition { from, to, symbol }| ((from, symbol), to))
+            .collect()
+    }
+
+    /// Returns the UNIQUE table of the automaton.
+    ///
+    /// The UNIQUE table describes which item a symbol in a state corresponds to.
+    /// A symbol corresponds to an item, if it's in its FIRST set.
+    fn unique_table(&self) -> HashMap<(usize, usize), usize> {
+        self.states
+            .iter()
+            .flat_map(|state| {
+                state.items.iter().fold(HashMap::new(), |mut acc, &id| {
+                    let item = self.items[id];
+
+                    // Find the FIRST set of the an item's follow sequence.
+                    let sequence = item.follow(self.grammar.rule(item.rule));
+                    let first = self.grammar.first_sequence(&sequence);
+
+                    for symbol in first {
+                        acc.entry((state.id, symbol))
+                            .or_insert_with(Vec::new)
+                            .push(item);
+                    }
+
+                    acc
+                })
+            })
+            .filter(|(_, items)| {
+                // The UNIQUE table only contains symbols
+                // that correspond to a single, unique item.
+                items.len() == 1 && items[0].unique
+            })
+            .map(|(key, items)| (key, items[0].id))
+            .collect()
+    }
+
+    /// Returns the PARSE table of the automaton.
+    /// It describes reverse state transitions between items.
+    fn parse_table(&self) -> HashMap<(usize, usize), usize> {
+        self.item_transitions
+            .iter()
+            .map(|ItemTransition { from, to, .. }| {
+                let state = to.0;
+                let from = util::get_index(&self.states[from.0].items, from.1);
+                let to = util::get_index(&self.states[to.0].items, to.1);
+
+                ((to, state), from)
+            })
+            .collect()
     }
 }
 

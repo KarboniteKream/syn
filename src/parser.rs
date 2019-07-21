@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use std::error;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
@@ -13,8 +12,13 @@ mod token;
 use span::Span;
 use token::Token;
 
+/// Parses the input file and returns a list of tokens.
+pub fn parse_file(filename: &Path, grammar: &Grammar) -> Result<Vec<Token>, Error> {
+    get_tokens(filename, grammar)
+}
+
 /// Returns the list of tokens in the input file using lexical analysis.
-pub fn parse_file(filename: &Path, grammar: &Grammar) -> Result<VecDeque<Token>, Error> {
+fn get_tokens(filename: &Path, grammar: &Grammar) -> Result<Vec<Token>, Error> {
     let source: Vec<char> = match fs::read_to_string(filename) {
         Ok(contents) => contents.chars().collect(),
         Err(error) => return Err(Error::File(error.to_string())),
@@ -28,7 +32,7 @@ pub fn parse_file(filename: &Path, grammar: &Grammar) -> Result<VecDeque<Token>,
     let mut span = Span::new(position);
 
     let mut last_token: Option<(Token, usize)> = None;
-    let mut tokens = VecDeque::new();
+    let mut tokens = Vec::new();
 
     while idx < source.len() {
         let ch = source[idx];
@@ -47,7 +51,7 @@ pub fn parse_file(filename: &Path, grammar: &Grammar) -> Result<VecDeque<Token>,
 
             // Ignore ϵ symbols.
             if token.symbol != Symbol::Null.id() {
-                tokens.push_back(token.clone());
+                tokens.push(token.clone());
             }
 
             // Seek back to the end of the last match.
@@ -73,8 +77,11 @@ pub fn parse_file(filename: &Path, grammar: &Grammar) -> Result<VecDeque<Token>,
         idx += 1;
     }
 
-    let end = Token::new(Symbol::End.id(), Symbol::End.name(), Span::new(position));
-    tokens.push_back(end);
+    tokens.push(Token::new(
+        Symbol::End.id(),
+        Symbol::End.name(),
+        Span::new(position),
+    ));
 
     Ok(tokens)
 }
