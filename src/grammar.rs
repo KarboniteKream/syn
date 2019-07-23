@@ -22,7 +22,7 @@ pub struct Grammar {
     // List of regular expressions for a specific symbol.
     tokens: Vec<(usize, Regex)>,
     start_symbol: usize,
-    rules: Vec<Rule>,
+    pub rules: Vec<Rule>,
     // List of rules for a specific symbol.
     symbol_rules: HashMap<usize, Vec<usize>>,
     first: RefCell<HashMap<usize, Vec<usize>>>,

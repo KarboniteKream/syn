@@ -1,0 +1,33 @@
+name = "ll"
+description = "Example from the Dragon Book"
+start_symbol = "E"
+
+[rules]
+E = [
+    "T E-",
+]
+
+E- = [
+    "+ T E-",
+    "",
+]
+
+T = [
+    "F T-",
+]
+
+T- = [
+    "* F T-",
+    "",
+]
+
+F = [
+    "( E )",
+    "int",
+]
+
+[tokens]
+int = "[0-9]+"
+
+[ignore]
+whitespace = "[ \t\r\n]*"
