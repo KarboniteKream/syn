@@ -109,7 +109,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
 
         let pattern = format!("^{}$", regex::escape(name));
 
-        let regex = match Regex::new(pattern.as_str()) {
+        let regex = match Regex::new(&pattern) {
             Ok(regex) => regex,
             Err(_) => return Err(Error::Regex(pattern)),
         };
@@ -132,7 +132,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
             None => return Err(Error::Token(name.to_owned())),
         };
 
-        let regex = match Regex::new(pattern.as_str()) {
+        let regex = match Regex::new(&pattern) {
             Ok(pattern) => pattern,
             Err(_) => return Err(Error::Regex(pattern)),
         };
@@ -153,7 +153,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
             None => return Err(Error::Token(name.to_owned())),
         };
 
-        let regex = match Regex::new(pattern.as_str()) {
+        let regex = match Regex::new(&pattern) {
             Ok(pattern) => pattern,
             Err(_) => return Err(Error::Regex(pattern)),
         };

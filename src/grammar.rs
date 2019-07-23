@@ -282,7 +282,7 @@ impl Grammar {
 
 impl Display for Grammar {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let rules = util::as_string(self.rules.iter(), self, "\n");
+        let rules = util::as_string(&self.rules, self, "\n");
         write!(f, "{} ({})\n{}", self.name, self.description, rules)
     }
 }

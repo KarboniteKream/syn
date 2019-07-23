@@ -299,13 +299,13 @@ impl Display for Automaton {
                 .map(|item| item.string(self))
                 .collect::<Vec<String>>()
                 .join("\n"),
-            util::as_string(self.state_transitions.iter(), &self.grammar, "\n")
+            util::as_string(&self.state_transitions, &self.grammar, "\n")
         );
 
         let items = format!(
             "Items\n{}\n\nItem transitions\n{}",
-            util::as_string(self.items.iter(), &self.grammar, "\n"),
-            util::as_string(self.item_transitions.iter(), &self.grammar, "\n")
+            util::as_string(&self.items, &self.grammar, "\n"),
+            util::as_string(&self.item_transitions, &self.grammar, "\n")
         );
 
         write!(f, "{}\n\n{}", states, items)

@@ -44,7 +44,7 @@ pub fn parse_args<'a>() -> ArgMatches<'a> {
         .get_matches()
 }
 
-/// Returns the index of an element in a Vec.
+/// Returns the index of an element in a vector.
 pub fn get_index<T>(vec: &[T], value: T) -> usize
 where
     T: Eq,
@@ -52,7 +52,7 @@ where
     vec.iter().position(|item| *item == value).unwrap()
 }
 
-/// Converts a collection to a sorted Vec.
+/// Converts a collection to a sorted vector.
 pub fn to_sorted_vec<I, T>(collection: I) -> Vec<T>
 where
     I: IntoIterator<Item = T>,
@@ -63,13 +63,12 @@ where
     vec
 }
 
-/// Calls `AsString.string()` on iterator elements and joins them with `separator`.
-pub fn as_string<I, T>(iterator: I, grammar: &Grammar, separator: &str) -> String
+/// Calls `AsString.string()` on vector elements and joins them with `separator`.
+pub fn as_string<T>(vec: &[T], grammar: &Grammar, separator: &str) -> String
 where
-    I: Iterator<Item = T>,
     T: AsString,
 {
-    iterator
+    vec.iter()
         .map(|item| item.string(grammar))
         .collect::<Vec<String>>()
         .join(separator)
