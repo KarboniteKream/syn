@@ -25,8 +25,8 @@ pub struct Grammar {
     rules: Vec<Rule>,
     // List of rules for a specific symbol.
     symbol_rules: HashMap<usize, Vec<usize>>,
-    // Cache for the `first()` method.
     first: RefCell<HashMap<usize, Vec<usize>>>,
+    follow: RefCell<HashMap<usize, Vec<usize>>>,
 }
 
 impl Grammar {
@@ -55,6 +55,7 @@ impl Grammar {
             rules,
             symbol_rules,
             first: RefCell::new(HashMap::new()),
+            follow: RefCell::new(HashMap::new()),
         }
     }
 
@@ -159,13 +160,13 @@ impl Grammar {
             return first.clone();
         }
 
-        let mut result = HashSet::new();
+        let mut first = HashSet::new();
         let null = Symbol::Null.id();
 
         // If the symbol is a terminal, it's the only member of the FIRST set.
         if self.symbol(symbol).is_terminal() {
-            result.insert(symbol);
-            return self.cache_first(symbol, &result);
+            first.insert(symbol);
+            return self.cache_first(symbol, &first);
         }
 
         if !self.symbol_rules.contains_key(&symbol) {
@@ -181,7 +182,7 @@ impl Grammar {
 
         loop {
             for (rule, idx) in &mut rules {
-                let mut rule_result = HashSet::new();
+                let mut rule_first = HashSet::new();
 
                 for &id in &rule.body[*idx..] {
                     *idx += 1;
@@ -189,36 +190,93 @@ impl Grammar {
                     // If the nonterminal symbol is the rule head itself,
                     // skip it until we can find the partial FIRST set.
                     if id == symbol {
-                        rule_result.remove(&null);
+                        rule_first.remove(&null);
                         break;
                     }
 
-                    let first: Vec<usize> = self.first(id);
+                    let first = self.first(id);
                     let has_null = first.contains(&null);
-                    rule_result.extend(first);
+                    rule_first.extend(first);
 
                     // If FIRST(h) does not contain ϵ, remove it from FIRST(s).
                     if !has_null {
-                        rule_result.remove(&null);
+                        rule_first.remove(&null);
+                        *idx = rule.body.len();
                         break;
                     }
                 }
 
                 // Cache current result to prevent an infinite loop.
-                result.extend(rule_result);
-                self.cache_first(symbol, &result);
+                first.extend(rule_first);
+                self.cache_first(symbol, &first);
             }
 
             // If all symbols have been checked, or FIRST(s) does not contain ϵ, we're done.
             let all_done = rules.iter().all(|&(rule, idx)| rule.body.len() == idx);
-            let has_null = result.contains(&null);
+            let has_null = first.contains(&null);
 
             if all_done || !has_null {
                 break;
             }
         }
 
-        self.cache_first(symbol, &result)
+        self.cache_first(symbol, &first)
+    }
+
+    /// Returns the FOLLOW set of the specified nonterminal symbol.
+    pub fn follow(&self, symbol: usize) -> Vec<usize> {
+        if let Some(follow) = self.follow.borrow().get(&symbol) {
+            return follow.clone();
+        }
+
+        let mut follow: HashMap<usize, HashSet<usize>> = self
+            .symbols
+            .iter()
+            .map(|symbol| (symbol.id(), HashSet::new()))
+            .collect();
+
+        loop {
+            let mut done = true;
+
+            for rule in &self.rules {
+                for idx in 0..rule.body.len() {
+                    let id = rule.body[idx];
+
+                    if self.symbols[id].is_terminal() {
+                        continue;
+                    }
+
+                    let mut first: HashSet<usize> = self
+                        .first_sequence(&rule.body[idx + 1..])
+                        .into_iter()
+                        .collect();
+
+                    let from = follow[&rule.head].clone();
+
+                    if first.is_empty() {
+                        first = from;
+                    } else if first.remove(&Symbol::Null.id()) {
+                        first.extend(from);
+                    }
+
+                    let to = follow.get_mut(&id).unwrap();
+                    done &= first.difference(&to).count() == 0;
+                    to.extend(first);
+                }
+            }
+
+            if done {
+                break;
+            }
+        }
+
+        let follow: HashMap<usize, Vec<usize>> = follow
+            .into_iter()
+            .map(|(symbol, follow)| (symbol, util::to_sorted_vec(follow)))
+            .collect();
+
+        self.follow.replace(follow.clone());
+        follow[&symbol].clone()
     }
 
     /// Returns the FIRST set for a sequence of symbols.
