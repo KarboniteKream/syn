@@ -298,6 +298,73 @@ impl Grammar {
         util::to_sorted_vec(result)
     }
 
+    /// Returns the FSTFLW set of a sequence of symbols.
+    pub fn first_follow(&self, symbols: &[usize], follow: usize) -> Vec<usize> {
+        let mut result = HashSet::new();
+        result.extend(self.first_sequence(&symbols));
+
+        if result.is_empty() || result.remove(&Symbol::Null.id()) {
+            for symbol in self.follow(follow) {
+                result.extend(self.first(symbol));
+            }
+        }
+
+        util::to_sorted_vec(result)
+    }
+
+    /// Wraps a sequence of symbols in a new rule and returns its ID.
+    pub fn wrap_symbols(&mut self, symbols: &[usize]) -> usize {
+        let head = self.symbol(symbols[0]);
+
+        let id = head.id();
+        let mut name = head.name();
+
+        loop {
+            name += "'";
+
+            // Check if the new symbol already exists.
+            let rules = self
+                .symbols
+                .iter()
+                .find(|symbol| symbol.name() == name)
+                .map(|symbol| self.rules(symbol.id()));
+
+            if rules.is_none() {
+                break;
+            }
+
+            // If a rule with the same body already exists, return its ID.
+            if let Some(rule) = rules.unwrap().iter().find(|rule| rule.body == symbols) {
+                return rule.id;
+            }
+        }
+
+        // Create the wrapper symbol and rule.
+        let symbol_id = self.symbols.len();
+        let symbol = Symbol::NonTerminal(symbol_id, name);
+
+        let rule_id = self.rules.len();
+        let mut rule = Rule::new(rule_id, symbol_id, vec![Symbol::End.id()]);
+        rule.body.extend_from_slice(symbols);
+
+        self.symbols.push(symbol);
+        self.rules.push(rule);
+        self.symbol_rules.insert(symbol_id, vec![rule_id]);
+
+        // Copy FIRST and FOLLOW sets.
+        let mut first = self.first.borrow_mut();
+        if let Some(set) = first.get(&id).cloned() {
+            first.insert(symbol_id, set);
+        }
+
+        let mut follow = self.follow.borrow_mut();
+        if let Some(set) = follow.get(&id).cloned() {
+            follow.insert(symbol_id, set);
+        }
+
+        rule_id
+    }
+
     /// Returns a symbol matching the specified text. The second return value
     /// indicates whether the symbol is a full or a partial match.
     ///

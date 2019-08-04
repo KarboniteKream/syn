@@ -31,7 +31,7 @@ pub struct Automaton {
 }
 
 impl Automaton {
-    pub fn new(grammar: &Grammar) -> Automaton {
+    pub fn new(grammar: &Grammar, rule: usize, lookaheads: &[usize]) -> Automaton {
         let mut queue = VecDeque::new();
 
         let mut states = IndexSet::new();
@@ -39,11 +39,14 @@ impl Automaton {
         let mut items = IndexSet::new();
         let mut item_transitions = HashSet::new();
 
-        // Construct the initial state, and add it to the queue.
-        let initial_state = State::new(0, vec![0]);
+        // Construct the initial state.
+        for &lookahead in lookaheads {
+            items.insert(Item::new(items.len(), grammar.rule(rule), lookahead, true));
+        }
+
+        let initial_state = State::new(0, (0..items.len()).collect());
+        queue.push_back((initial_state.id, Symbol::End.id()));
         states.insert(initial_state);
-        items.insert(Item::new(0, grammar.rule(0), Symbol::Null.id(), true));
-        queue.push_back((0, Symbol::End.id()));
 
         while let Some((id, symbol)) = queue.pop_front() {
             let state = states.get_index(id).unwrap();
@@ -96,6 +99,10 @@ impl Automaton {
             items: util::to_sorted_vec(items),
             item_transitions: util::to_sorted_vec(item_transitions),
         }
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.action_table().is_ok()
     }
 
     /// Returns all automaton data tables.

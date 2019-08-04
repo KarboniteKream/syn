@@ -1,0 +1,26 @@
+name = "lllr"
+
+[rules]
+S = "a A a b C b"
+
+A = [
+    "a E B",
+    "A a a",
+]
+
+B = "b b"
+
+C = [
+    "a a D",
+    "a b E",
+]
+
+D = "a a"
+
+E = [
+    "a",
+    "A a",
+]
+
+[ignore]
+whitespace = "[ \t\r\n]*"

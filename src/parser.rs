@@ -1,10 +1,11 @@
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::convert::identity;
 use std::error;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
 use std::path::Path;
 
-use crate::automaton::{Action, Data};
+use crate::automaton::{Action, Automaton, Data};
 use crate::grammar::Grammar;
 use crate::symbol::Symbol;
 use crate::util::{self, Table};
@@ -23,6 +24,10 @@ pub fn parse_file(filename: &Path, grammar: &Grammar, data: &Data) -> Result<Vec
         return Ok(Vec::new());
     }
 
+    if let Ok(rules) = parse_lllr(grammar) {
+        return Ok(rules);
+    }
+
     if let Ok(rules) = parse_ll(&tokens, grammar) {
         return Ok(rules);
     }
@@ -30,10 +35,91 @@ pub fn parse_file(filename: &Path, grammar: &Grammar, data: &Data) -> Result<Vec
     parse_lr(&tokens, grammar, data)
 }
 
+/// Performs parsing using LLLR.
+fn parse_lllr(grammar: &Grammar) -> Result<Vec<usize>, Error> {
+    let parsing_table = get_parsing_table(grammar);
+    let mut wrappers = HashMap::new();
+
+    // Find wrappers for conflicting symbols.
+    if let Err(conflicts) = parsing_table {
+        let mut all_conflicts: HashSet<usize> = conflicts.into_iter().collect();
+        let mut conflicts = all_conflicts.clone();
+
+        while !conflicts.is_empty() {
+            let mut new_conflicts = HashSet::new();
+
+            for rule in &grammar.rules {
+                // Ignore rules for conflicting symbols.
+                if all_conflicts.contains(&rule.head) {
+                    continue;
+                }
+
+                let mut idx = 0;
+
+                while idx < rule.body.len() {
+                    let symbol = rule.body[idx];
+
+                    // Ignore non-conflicting symbols.
+                    if !conflicts.contains(&symbol) {
+                        idx += 1;
+                        continue;
+                    }
+
+                    let mut symbols = Vec::new();
+                    let mut tail = rule.body[idx..].to_vec();
+                    let mut follow = Vec::new();
+
+                    // Find a wrapper with a valid LR automaton.
+                    let is_valid = loop {
+                        if tail.is_empty() {
+                            break false;
+                        }
+
+                        symbols.push(tail.remove(0));
+                        follow = grammar.first_follow(&tail, rule.head);
+
+                        let mut grammar = grammar.clone();
+                        let rule = grammar.wrap_symbols(&symbols);
+
+                        if Automaton::new(&grammar, rule, &follow).is_valid() {
+                            break true;
+                        }
+                    };
+
+                    if !is_valid {
+                        if all_conflicts.insert(rule.head) {
+                            new_conflicts.insert(rule.head);
+                        }
+
+                        // If the rule itself is conflicting,
+                        // its wrappers are unnecessary.
+                        wrappers.remove(&rule.head);
+                        break;
+                    }
+
+                    let wrapper = (rule.id, idx, symbols.clone(), follow);
+                    idx += symbols.len();
+
+                    wrappers
+                        .entry(rule.head)
+                        .or_insert_with(Vec::new)
+                        .push(wrapper);
+                }
+            }
+
+            conflicts = new_conflicts;
+        }
+    }
+
+    let _wrappers = util::to_sorted_vec(wrappers.values().flat_map(identity));
+
+    Err(Error::Internal)
+}
+
 /// Performs parsing using LL(1).
 fn parse_ll(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Error> {
-    let table = match get_ll_table(grammar) {
-        Ok(table) => table,
+    let parsing_table = match get_parsing_table(grammar) {
+        Ok(parsing_table) => parsing_table,
         Err(conflicts) => {
             let symbol = grammar.symbol(conflicts[0]);
             return Err(Error::Conflict(symbol.clone()));
@@ -48,7 +134,7 @@ fn parse_ll(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Error> {
         let &symbol = stack.last().unwrap();
         let token = input.front().unwrap();
 
-        if let Some(&rule) = table.get(&(symbol, token.symbol)) {
+        if let Some(&rule) = parsing_table.get(&(symbol, token.symbol)) {
             stack.pop();
 
             for &symbol in grammar.rule(rule).body.iter().rev() {
@@ -142,7 +228,7 @@ fn parse_lr(tokens: &[Token], grammar: &Grammar, data: &Data) -> Result<Vec<usiz
 }
 
 /// Constructs the LL parsing table or returns the list of conflicts.
-fn get_ll_table(grammar: &Grammar) -> Result<Table<usize>, Vec<usize>> {
+fn get_parsing_table(grammar: &Grammar) -> Result<Table<usize>, Vec<usize>> {
     let mut table = HashMap::new();
     let mut conflicts = HashSet::new();
 

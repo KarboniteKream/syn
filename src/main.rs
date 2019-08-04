@@ -10,6 +10,7 @@ mod symbol;
 mod util;
 
 use automaton::Automaton;
+use symbol::Symbol;
 use util::AsString;
 
 fn main() {
@@ -30,7 +31,7 @@ fn main() {
     }
 
     println!("GRAMMAR\n{}", grammar);
-    let automaton = Automaton::new(&grammar);
+    let automaton = Automaton::new(&grammar, 0, &[Symbol::Null.id()]);
     let grammar = &automaton.grammar;
 
     let data = match automaton.data() {
