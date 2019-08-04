@@ -56,6 +56,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
         0,
         Symbol::Start.id(),
         vec![Symbol::End.id(), start_symbol, Symbol::End.id()],
+        vec![Symbol::Null.id()],
     )];
 
     let mut names: HashMap<String, usize> = symbols
@@ -88,7 +89,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
             };
 
             let head = get_symbol(name, false, &mut names, &mut symbols);
-            let rule = Rule::new(rules.len(), head, body);
+            let rule = Rule::new(rules.len(), head, body, Vec::new());
 
             if rules.contains(&rule) {
                 continue;

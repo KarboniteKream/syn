@@ -15,11 +15,17 @@ pub struct Rule {
     pub id: usize,
     pub head: usize,
     pub body: Vec<usize>,
+    pub follow: Vec<usize>,
 }
 
 impl Rule {
-    pub fn new(id: usize, head: usize, body: Vec<usize>) -> Rule {
-        Rule { id, head, body }
+    pub fn new(id: usize, head: usize, body: Vec<usize>, follow: Vec<usize>) -> Rule {
+        Rule {
+            id,
+            head,
+            body,
+            follow,
+        }
     }
 
     /// Returns the set of nonterminal symbols in the rule body.
@@ -60,12 +66,25 @@ impl Hash for Rule {
 impl AsString for Rule {
     fn string(&self, grammar: &Grammar) -> String {
         let head = grammar.symbol(self.head);
-        let body: Vec<String> = self
+
+        let body = self
             .body
             .iter()
             .map(|&id| grammar.symbol(id).to_string())
-            .collect();
+            .collect::<Vec<String>>()
+            .join(" ");
 
-        format!("({}) {} → {}", self.id, head, body.join(" "))
+        let mut follow = self
+            .follow
+            .iter()
+            .map(|&id| grammar.symbol(id).to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        if !follow.is_empty() {
+            follow = format!(", {{{}}}", follow);
+        }
+
+        format!("({}) {} → {}{}", self.id, head, body, follow)
     }
 }

@@ -313,7 +313,7 @@ impl Grammar {
     }
 
     /// Wraps a sequence of symbols in a new rule and returns its ID.
-    pub fn wrap_symbols(&mut self, symbols: &[usize]) -> usize {
+    pub fn wrap_symbols(&mut self, symbols: &[usize], follow: &[usize]) -> usize {
         let head = self.symbol(symbols[0]);
 
         let id = head.id();
@@ -344,7 +344,7 @@ impl Grammar {
         let symbol = Symbol::NonTerminal(symbol_id, name);
 
         let rule_id = self.rules.len();
-        let mut rule = Rule::new(rule_id, symbol_id, vec![Symbol::End.id()]);
+        let mut rule = Rule::new(rule_id, symbol_id, vec![Symbol::End.id()], follow.to_vec());
         rule.body.extend_from_slice(symbols);
 
         self.symbols.push(symbol);

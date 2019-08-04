@@ -111,7 +111,7 @@ impl State {
             for rule in grammar.rules(head) {
                 // Derive a new item for all the symbols in the FIRST set.
                 for &lookahead in &lookaheads {
-                    let rule = Rule::new(rule.id, head, rule.body.clone());
+                    let rule = Rule::new(rule.id, head, rule.body.clone(), Vec::new());
                     let mut next_item = Item::new(next_items.len(), &rule, lookahead, item.unique);
                     let mut transition = ItemTransition::new(
                         (state_id, item.id),
