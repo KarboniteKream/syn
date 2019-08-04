@@ -279,7 +279,7 @@ impl Grammar {
         follow[&symbol].clone()
     }
 
-    /// Returns the FIRST set for a sequence of symbols.
+    /// Returns the FIRST set of a sequence of symbols.
     pub fn first_sequence(&self, symbols: &[usize]) -> Vec<usize> {
         let mut result = HashSet::new();
         let null = Symbol::Null.id();

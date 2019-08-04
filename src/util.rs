@@ -1,6 +1,11 @@
+use std::collections::HashMap;
+
 use clap::{crate_authors, crate_name, crate_version, App, Arg, ArgMatches};
 
 use crate::grammar::Grammar;
+
+/// The `Table` type represents a simplified version of an automaton.
+pub type Table<T> = HashMap<(usize, usize), T>;
 
 /// The `AsString` trait is used as an alternative to the `Display` trait,
 /// as it requires a `Grammar` argument to correctly format a struct.

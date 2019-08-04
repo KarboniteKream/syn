@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::error;
 use std::fmt::{self, Display, Formatter};
 use std::fs;
@@ -7,6 +7,7 @@ use std::path::Path;
 use crate::automaton::{Action, Data};
 use crate::grammar::Grammar;
 use crate::symbol::Symbol;
+use crate::util::{self, Table};
 
 mod span;
 mod token;
@@ -14,40 +15,34 @@ mod token;
 use span::Span;
 use token::Token;
 
-/// Parses the input file using LL(1) or LR(1), and returns the list of tokens.
-pub fn parse_file(filename: &Path, grammar: &Grammar, data: &Data) -> Result<Vec<Token>, Error> {
+/// Parses the input file and returns the list of rules.
+pub fn parse_file(filename: &Path, grammar: &Grammar, data: &Data) -> Result<Vec<usize>, Error> {
     let tokens = get_tokens(filename, grammar)?;
 
-    if tokens.is_empty() || parse_ll(&tokens, grammar).is_ok() {
-        return Ok(tokens);
+    if tokens.is_empty() {
+        return Ok(Vec::new());
     }
 
-    parse_lr(&tokens, grammar, data).map(|_| tokens)
+    if let Ok(rules) = parse_ll(&tokens, grammar) {
+        return Ok(rules);
+    }
+
+    parse_lr(&tokens, grammar, data)
 }
 
 /// Performs parsing using LL(1).
-fn parse_ll(tokens: &[Token], grammar: &Grammar) -> Result<(), Error> {
-    let mut table: HashMap<(usize, usize), usize> = HashMap::new();
-
-    for rule in &grammar.rules {
-        let mut symbols = grammar.first_sequence(&rule.body);
-
-        if symbols.contains(&Symbol::Null.id()) {
-            symbols = grammar.follow(rule.head);
+fn parse_ll(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Error> {
+    let table = match get_ll_table(grammar) {
+        Ok(table) => table,
+        Err(conflicts) => {
+            let symbol = grammar.symbol(conflicts[0]);
+            return Err(Error::Conflict(symbol.clone()));
         }
-
-        for symbol in symbols {
-            if table.insert((rule.head, symbol), rule.id).is_some() {
-                return Err(Error::Conflict(
-                    grammar.symbol(rule.head).clone(),
-                    grammar.symbol(symbol).clone(),
-                ));
-            }
-        }
-    }
+    };
 
     let mut input = get_input(tokens);
     let mut stack = vec![0];
+    let mut rules = Vec::new();
 
     while !input.is_empty() && !stack.is_empty() {
         let &symbol = stack.last().unwrap();
@@ -60,6 +55,10 @@ fn parse_ll(tokens: &[Token], grammar: &Grammar) -> Result<(), Error> {
                 if symbol != Symbol::Null.id() {
                     stack.push(symbol);
                 }
+            }
+
+            if rule != 0 {
+                rules.push(rule);
             }
 
             continue;
@@ -81,16 +80,20 @@ fn parse_ll(tokens: &[Token], grammar: &Grammar) -> Result<(), Error> {
         return Err(Error::EOF);
     }
 
-    Ok(())
+    Ok(rules)
 }
 
 /// Performs parsing using LR(1).
-fn parse_lr(tokens: &[Token], grammar: &Grammar, data: &Data) -> Result<(), Error> {
+fn parse_lr(tokens: &[Token], grammar: &Grammar, data: &Data) -> Result<Vec<usize>, Error> {
     let mut input = get_input(tokens);
     let mut stack = vec![(0, 0)];
-    let mut is_valid = false;
+    let mut rules = Vec::new();
 
-    while !input.is_empty() && !stack.is_empty() {
+    let is_valid = loop {
+        if input.is_empty() || stack.is_empty() {
+            break false;
+        }
+
         let &(_, state) = stack.last().unwrap();
         let token = input.front().unwrap();
         let action = data.action_table.get(&(state, token.symbol));
@@ -120,13 +123,13 @@ fn parse_lr(tokens: &[Token], grammar: &Grammar, data: &Data) -> Result<(), Erro
                 };
 
                 stack.push((rule.head, state));
+                rules.push(rule.id);
             }
             Action::Accept => {
-                is_valid = true;
-                break;
+                break true;
             }
         }
-    }
+    };
 
     if !is_valid {
         return match input.pop_front() {
@@ -135,7 +138,33 @@ fn parse_lr(tokens: &[Token], grammar: &Grammar, data: &Data) -> Result<(), Erro
         };
     }
 
-    Ok(())
+    Ok(rules)
+}
+
+/// Constructs the LL parsing table or returns the list of conflicts.
+fn get_ll_table(grammar: &Grammar) -> Result<Table<usize>, Vec<usize>> {
+    let mut table = HashMap::new();
+    let mut conflicts = HashSet::new();
+
+    for rule in &grammar.rules {
+        let mut symbols = grammar.first_sequence(&rule.body);
+
+        if symbols.contains(&Symbol::Null.id()) {
+            symbols = grammar.follow(rule.head);
+        }
+
+        for symbol in symbols {
+            if table.insert((rule.head, symbol), rule.id).is_some() {
+                conflicts.insert(rule.head);
+            }
+        }
+    }
+
+    if !conflicts.is_empty() {
+        return Err(util::to_sorted_vec(conflicts));
+    }
+
+    Ok(table)
 }
 
 /// Returns the list of tokens in the input file using lexical analysis.
@@ -225,7 +254,7 @@ fn get_input(tokens: &[Token]) -> VecDeque<Token> {
 
 #[derive(Debug)]
 pub enum Error {
-    Conflict(Symbol, Symbol),
+    Conflict(Symbol),
     EOF,
     File(String),
     Internal,
@@ -236,7 +265,7 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            Error::Conflict(s1, s2) => write!(f, "Conflict in table for ({}, {})", s1, s2),
+            Error::Conflict(symbol) => write!(f, "Conflict in table for {}", symbol),
             Error::EOF => write!(f, "Unexpected end of file"),
             Error::File(error) => write!(f, "Cannot read file {}", error),
             Error::Internal => write!(f, "Internal error"),

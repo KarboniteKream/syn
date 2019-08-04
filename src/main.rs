@@ -30,8 +30,7 @@ fn main() {
     }
 
     println!("GRAMMAR\n{}", grammar);
-    let automaton = Automaton::new(grammar);
-    println!("\nAUTOMATON\n{}", automaton);
+    let automaton = Automaton::new(&grammar);
     let grammar = &automaton.grammar;
 
     let data = match automaton.data() {
@@ -54,16 +53,17 @@ fn main() {
     }
 
     let filename = args.value_of("input").unwrap();
-    let tokens = match parser::parse_file(Path::new(filename), &grammar, &data) {
-        Ok(tokens) => tokens,
+    let rules = match parser::parse_file(Path::new(filename), &grammar, &data) {
+        Ok(rules) => rules,
         Err(error) => {
             eprintln!("Input file '{}' cannot be parsed: {}", filename, error);
             process::exit(1);
         }
     };
 
-    println!("\nTOKENS");
-    for token in tokens {
-        println!("{}", token);
+    println!("\nRULES");
+    for rule in rules {
+        let rule = grammar.rule(rule);
+        println!("{}", rule.string(grammar));
     }
 }

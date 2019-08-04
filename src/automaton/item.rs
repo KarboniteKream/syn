@@ -82,7 +82,7 @@ impl Item {
 
     /// Returns `true` if the item can reduce the rule.
     pub fn can_reduce(&self) -> bool {
-        if self.rule == 0 {
+        if self.lookahead == Symbol::Null.id() {
             return false;
         }
 
@@ -94,7 +94,7 @@ impl Item {
 
     /// Returns `true` if the item can accept the parse stack.
     pub fn can_accept(&self) -> bool {
-        if self.rule != 0 || self.dot == 0 {
+        if self.lookahead != Symbol::Null.id() || self.dot == 0 {
             return false;
         }
 

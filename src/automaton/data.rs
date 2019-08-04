@@ -1,16 +1,14 @@
-use std::collections::HashMap;
-
 use crate::grammar::Grammar;
-use crate::util::{self, AsString};
+use crate::util::{self, AsString, Table};
 
 use super::action::Action;
 
 /// The `Data` struct contains all automaton data tables.
 pub struct Data {
-    pub action_table: HashMap<(usize, usize), Action>,
-    pub goto_table: HashMap<(usize, usize), usize>,
-    pub unique_table: HashMap<(usize, usize), usize>,
-    pub parse_table: HashMap<(usize, usize), usize>,
+    pub action_table: Table<Action>,
+    pub goto_table: Table<usize>,
+    pub unique_table: Table<usize>,
+    pub parse_table: Table<usize>,
 }
 
 impl AsString for Data {

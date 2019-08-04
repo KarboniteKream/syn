@@ -6,7 +6,7 @@ use indexmap::IndexSet;
 
 use crate::grammar::Grammar;
 use crate::symbol::Symbol;
-use crate::util::{self, AsString};
+use crate::util::{self, AsString, Table};
 
 mod action;
 mod data;
@@ -31,7 +31,7 @@ pub struct Automaton {
 }
 
 impl Automaton {
-    pub fn new(grammar: Grammar) -> Automaton {
+    pub fn new(grammar: &Grammar) -> Automaton {
         let mut queue = VecDeque::new();
 
         let mut states = IndexSet::new();
@@ -90,7 +90,7 @@ impl Automaton {
         }
 
         Automaton {
-            grammar,
+            grammar: grammar.clone(),
             states: util::to_sorted_vec(states),
             state_transitions: util::to_sorted_vec(state_transitions),
             items: util::to_sorted_vec(items),
@@ -188,9 +188,9 @@ impl Automaton {
     }
 
     /// Returns the ACTION table of the automaton.
-    fn action_table(&self) -> Result<HashMap<(usize, usize), Action>, Error> {
+    fn action_table(&self) -> Result<Table<Action>, Error> {
         // All transitions with terminal symbols correspond to a Shift action.
-        let mut action_table: HashMap<(usize, usize), Action> = self
+        let mut action_table: Table<Action> = self
             .state_transitions
             .iter()
             .filter_map(|&transition| match self.grammar.symbol(transition.symbol) {
@@ -230,7 +230,7 @@ impl Automaton {
     }
 
     /// Returns the GOTO table of the automaton.
-    fn goto_table(&self) -> HashMap<(usize, usize), usize> {
+    fn goto_table(&self) -> Table<usize> {
         self.state_transitions
             .iter()
             .filter_map(|&transition| match self.grammar.symbol(transition.symbol) {
@@ -245,7 +245,7 @@ impl Automaton {
     ///
     /// The UNIQUE table describes which item a symbol in a state corresponds to.
     /// A symbol corresponds to an item, if it's in its FIRST set.
-    fn unique_table(&self) -> HashMap<(usize, usize), usize> {
+    fn unique_table(&self) -> Table<usize> {
         self.states
             .iter()
             .flat_map(|state| {
@@ -276,7 +276,7 @@ impl Automaton {
 
     /// Returns the PARSE table of the automaton.
     /// It describes reverse state transitions between items.
-    fn parse_table(&self) -> HashMap<(usize, usize), usize> {
+    fn parse_table(&self) -> Table<usize> {
         self.item_transitions
             .iter()
             .map(|ItemTransition { from, to, .. }| {
