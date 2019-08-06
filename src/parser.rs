@@ -24,7 +24,7 @@ pub fn parse_file(filename: &Path, grammar: &Grammar, data: &Data) -> Result<Vec
         return Ok(Vec::new());
     }
 
-    if let Ok(rules) = parse_lllr(grammar) {
+    if let Ok(rules) = parse_lllr(&tokens, grammar) {
         return Ok(rules);
     }
 
@@ -36,7 +36,7 @@ pub fn parse_file(filename: &Path, grammar: &Grammar, data: &Data) -> Result<Vec
 }
 
 /// Performs parsing using LLLR.
-fn parse_lllr(grammar: &Grammar) -> Result<Vec<usize>, Error> {
+fn parse_lllr(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Error> {
     let parsing_table = get_parsing_table(grammar, &HashSet::new());
 
     let mut all_conflicts = HashSet::new();
@@ -114,7 +114,7 @@ fn parse_lllr(grammar: &Grammar) -> Result<Vec<usize>, Error> {
     }
 
     let mut grammar = grammar.clone();
-    let mut automatons = HashMap::new();
+    let mut tables = HashMap::new();
 
     // Wrap conflicting symbols.
     let wrappers: Vec<(usize, (usize, usize), usize)> =
@@ -130,12 +130,69 @@ fn parse_lllr(grammar: &Grammar) -> Result<Vec<usize>, Error> {
     for &(id, (from, to), rule) in wrappers.iter().rev() {
         let symbol = grammar.rule(rule).head;
         grammar.rules[id].body.splice(from..to, vec![symbol]);
-        automatons.insert(symbol, Automaton::new(&grammar, rule));
     }
 
-    let _parsing_table = get_parsing_table(&grammar, &all_conflicts);
+    // Construct embedded automatons.
+    for (_, _, rule) in wrappers {
+        let symbol = grammar.rule(rule).head;
 
-    Err(Error::Internal)
+        if tables.contains_key(&symbol) {
+            continue;
+        }
+
+        match Automaton::new(&grammar, rule).data() {
+            Ok(data) => tables.insert(symbol, data),
+            Err(_) => return Err(Error::Internal),
+        };
+    }
+
+    let parsing_table = match get_parsing_table(&grammar, &all_conflicts) {
+        Ok(parsing_table) => parsing_table,
+        Err(_) => return Err(Error::Internal),
+    };
+
+    let mut input = get_input(tokens);
+    let mut stack = vec![0];
+    let mut rules = Vec::new();
+
+    while !input.is_empty() && !stack.is_empty() {
+        let &symbol = stack.last().unwrap();
+        let token = input.front().unwrap();
+
+        if let Some(&rule) = parsing_table.get(&(symbol, token.symbol)) {
+            stack.pop();
+
+            for &symbol in grammar.rule(rule).body.iter().rev() {
+                if symbol != Symbol::Null.id() {
+                    stack.push(symbol);
+                }
+            }
+
+            rules.push(rule);
+            continue;
+        }
+
+        if let Some(_data) = tables.get(&symbol) {
+            return Err(Error::Internal);
+        }
+
+        if symbol != token.symbol {
+            break;
+        }
+
+        input.pop_front();
+        stack.pop();
+    }
+
+    if let Some(token) = input.pop_front() {
+        return Err(Error::Parse(token));
+    }
+
+    if !stack.is_empty() {
+        return Err(Error::EOF);
+    }
+
+    Ok(rules)
 }
 
 /// Performs parsing using LL(1).
