@@ -9,8 +9,8 @@ pub enum Action {
     /// Reduce a grammar rule from the parse stack.
     Reduce(usize),
 
-    /// Accept the parse stack.
-    Accept,
+    /// Reduce a grammar rule and accept the parse stack.
+    Accept(usize),
 }
 
 impl Display for Action {
@@ -18,7 +18,7 @@ impl Display for Action {
         match self {
             Action::Shift(state) => write!(f, "s{}", state),
             Action::Reduce(rule) => write!(f, "r{}", rule),
-            Action::Accept => write!(f, "acc"),
+            Action::Accept(rule) => write!(f, "acc{}", rule),
         }
     }
 }

@@ -56,7 +56,7 @@ impl Item {
     /// Returns all symbols following `head`, including the lookahead.
     pub fn tail(&self, rule: &Rule) -> Vec<usize> {
         let mut tail = if self.head.is_some() {
-            rule.body[self.dot + 1..].to_vec()
+            rule.tail(self.dot + 1).to_vec()
         } else {
             Vec::new()
         };
@@ -67,7 +67,7 @@ impl Item {
 
     /// Return `head` and all the symbols following it.
     pub fn follow(&self, rule: &Rule) -> Vec<usize> {
-        let mut follow = rule.body[self.dot..].to_vec();
+        let mut follow = rule.tail(self.dot).to_vec();
         follow.push(self.lookahead);
         follow
     }
@@ -81,8 +81,8 @@ impl Item {
     }
 
     /// Returns `true` if the item can reduce the rule.
-    pub fn can_reduce(&self) -> bool {
-        if self.lookahead == Symbol::Null.id() {
+    pub fn can_reduce(&self, initial_rule: usize) -> bool {
+        if self.rule == initial_rule {
             return false;
         }
 
@@ -93,15 +93,8 @@ impl Item {
     }
 
     /// Returns `true` if the item can accept the parse stack.
-    pub fn can_accept(&self) -> bool {
-        if self.lookahead != Symbol::Null.id() || self.dot == 0 {
-            return false;
-        }
-
-        match self.head {
-            Some(id) => id == Symbol::End.id(),
-            None => false,
-        }
+    pub fn can_accept(&self, initial_rule: usize) -> bool {
+        self.rule == initial_rule && self.head.is_none()
     }
 }
 

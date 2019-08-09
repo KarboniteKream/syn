@@ -42,7 +42,7 @@ fn main() {
     };
 
     if let Some(output) = args.value_of("output") {
-        let contents: String = automaton.to_dot();
+        let contents = automaton.to_dot();
 
         if let Err(error) = fs::write(Path::new(output), contents) {
             eprintln!("Unable to save to file '{}': {}", output, error);

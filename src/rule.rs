@@ -36,6 +36,11 @@ impl Rule {
             .cloned()
             .collect()
     }
+
+    /// Returns the tail at the specified index.
+    pub fn tail(&self, idx: usize) -> &[usize] {
+        &self.body[idx..]
+    }
 }
 
 impl PartialEq for Rule {

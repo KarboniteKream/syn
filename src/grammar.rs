@@ -184,7 +184,7 @@ impl Grammar {
             for (rule, idx) in &mut rules {
                 let mut rule_first = HashSet::new();
 
-                for &id in &rule.body[*idx..] {
+                for &id in rule.tail(*idx) {
                     *idx += 1;
 
                     // If the nonterminal symbol is the rule head itself,
@@ -247,7 +247,7 @@ impl Grammar {
                     }
 
                     let mut first: HashSet<usize> = self
-                        .first_sequence(&rule.body[idx + 1..])
+                        .first_sequence(rule.tail(idx + 1))
                         .into_iter()
                         .collect();
 

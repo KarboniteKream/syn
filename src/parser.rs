@@ -68,7 +68,7 @@ fn parse_lllr(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Error> 
                     }
 
                     let mut symbols = Vec::new();
-                    let mut tail = rule.body[idx..].to_vec();
+                    let mut tail = rule.tail(idx).to_vec();
                     let mut follow = Vec::new();
 
                     // Find a wrapper with a valid LR automaton.
@@ -152,7 +152,7 @@ fn parse_lllr(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Error> 
     };
 
     let mut input = get_input(tokens);
-    let mut stack = vec![0];
+    let mut stack = vec![Symbol::Start.id()];
     let mut rules = Vec::new();
 
     while !input.is_empty() && !stack.is_empty() {
@@ -206,7 +206,7 @@ fn parse_ll(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Error> {
     };
 
     let mut input = get_input(tokens);
-    let mut stack = vec![0];
+    let mut stack = vec![Symbol::Start.id()];
     let mut rules = Vec::new();
 
     while !input.is_empty() && !stack.is_empty() {
@@ -248,20 +248,20 @@ fn parse_ll(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Error> {
 /// Performs parsing using LR(1).
 fn parse_lr(tokens: &[Token], grammar: &Grammar, data: &Data) -> Result<Vec<usize>, Error> {
     let mut input = get_input(tokens);
-    let mut stack = vec![(0, 0)];
+    let mut stack = vec![(Symbol::Start.id(), 0)];
     let mut rules = Vec::new();
 
     let is_valid = loop {
-        if input.is_empty() || stack.is_empty() {
+        if stack.is_empty() {
             break false;
         }
 
         let &(_, state) = stack.last().unwrap();
-        let token = input.front().unwrap();
+        let token = input.front().cloned().unwrap_or_else(Token::null);
         let action = data.action_table.get(&(state, token.symbol));
 
         if action.is_none() {
-            return Err(Error::Parse(token.clone()));
+            break false;
         }
 
         match action.unwrap() {
@@ -287,8 +287,8 @@ fn parse_lr(tokens: &[Token], grammar: &Grammar, data: &Data) -> Result<Vec<usiz
                 rules.push(rule.id);
                 stack.push((rule.head, state));
             }
-            Action::Accept => {
-                rules.push(0);
+            Action::Accept(rule) => {
+                rules.push(*rule);
                 break true;
             }
         }
@@ -301,6 +301,7 @@ fn parse_lr(tokens: &[Token], grammar: &Grammar, data: &Data) -> Result<Vec<usiz
         };
     }
 
+    rules.reverse();
     Ok(rules)
 }
 
@@ -415,9 +416,8 @@ fn advance(position: (usize, usize), ch: char) -> (usize, usize) {
 fn get_input(tokens: &[Token]) -> VecDeque<Token> {
     let mut input: VecDeque<Token> = tokens.iter().cloned().collect();
 
-    let delimiter = Token::new(Symbol::End.id(), Symbol::End.name(), Span::default());
-    input.push_front(delimiter.clone());
-    input.push_back(delimiter);
+    input.push_front(Token::end());
+    input.push_back(Token::end());
 
     input
 }

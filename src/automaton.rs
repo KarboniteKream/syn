@@ -24,6 +24,7 @@ use transition::{ItemTransition, StateTransition};
 /// The `Automaton` struct describes the automaton for a grammar.
 pub struct Automaton {
     pub grammar: Grammar,
+    initial_rule: usize,
     states: Vec<State>,
     state_transitions: Vec<StateTransition>,
     items: Vec<Item>,
@@ -96,6 +97,7 @@ impl Automaton {
 
         Automaton {
             grammar: grammar.clone(),
+            initial_rule: initial_rule.id,
             states: util::to_sorted_vec(states),
             state_transitions: util::to_sorted_vec(state_transitions),
             items: util::to_sorted_vec(items),
@@ -213,25 +215,23 @@ impl Automaton {
             for &id in &state.items {
                 let item = self.items[id];
 
-                // Accept actions have precedence.
-                if item.can_accept() {
-                    action_table.insert((state.id, Symbol::End.id()), Action::Accept);
+                // Accept actions have a higher precedence.
+                let (symbol, action) = if item.can_accept(self.initial_rule) {
+                    let symbol = item.head.unwrap_or(item.lookahead);
+                    (symbol, Action::Accept(item.rule))
+                } else if item.can_reduce(self.initial_rule) {
+                    (item.lookahead, Action::Reduce(item.rule))
+                } else {
                     continue;
+                };
+
+                // Every symbol in each state can only correspond to a single action.
+                if action_table.contains_key(&(state.id, symbol)) {
+                    let symbol = self.grammar.symbol(symbol).clone();
+                    return Err(Error::ActionConflict(state.id, symbol));
                 }
 
-                if !item.can_reduce() {
-                    continue;
-                }
-
-                let key = (state.id, item.lookahead);
-
-                // Every symbol in each state can only correspond to one action.
-                if action_table.contains_key(&key) {
-                    let symbol = self.grammar.symbol(key.1).clone();
-                    return Err(Error::ActionConflict(key.0, symbol));
-                }
-
-                action_table.insert(key, Action::Reduce(item.rule));
+                action_table.insert((state.id, symbol), action);
             }
         }
 

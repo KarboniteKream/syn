@@ -19,7 +19,7 @@ D = "a a"
 
 E = [
     "a",
-    "A a",
+    "E a",
 ]
 
 [ignore]
