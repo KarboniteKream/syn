@@ -16,7 +16,7 @@ fn main() {
     let args = util::parse_args();
 
     let filename = args.value_of("grammar").unwrap();
-    let grammar = match grammar::read_file(Path::new(filename)) {
+    let mut grammar = match grammar::read_file(Path::new(filename)) {
         Ok(grammar) => grammar,
         Err(error) => {
             eprintln!("Grammar file '{}' cannot be parsed: {}", filename, error);
@@ -66,7 +66,7 @@ fn main() {
 
             parser::parse_lr(&tokens, &grammar, &data)
         }
-        "lllr" => parser::parse_lllr(&tokens, &grammar),
+        "lllr" => parser::parse_lllr(&tokens, &mut grammar),
         _ => Err(parser::Error::Internal),
     };
 

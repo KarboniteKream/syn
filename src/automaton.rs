@@ -44,7 +44,7 @@ impl Automaton {
         let initial_rule = grammar.rule(rule);
 
         for &lookahead in &initial_rule.follow {
-            items.insert(Item::new(items.len(), initial_rule, lookahead, true));
+            items.insert(Item::initial(items.len(), initial_rule, lookahead));
         }
 
         let initial_state = State::new(0, (0..items.len()).collect());

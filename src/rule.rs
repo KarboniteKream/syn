@@ -79,17 +79,6 @@ impl AsString for Rule {
             .collect::<Vec<String>>()
             .join(" ");
 
-        let mut follow = self
-            .follow
-            .iter()
-            .map(|&id| grammar.symbol(id).to_string())
-            .collect::<Vec<String>>()
-            .join(", ");
-
-        if !follow.is_empty() {
-            follow = format!(", {{{}}}", follow);
-        }
-
-        format!("({}) {} → {}{}", self.id, head, body, follow)
+        format!("({}) {} → {}", self.id, head, body)
     }
 }

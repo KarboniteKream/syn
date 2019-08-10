@@ -80,11 +80,12 @@ pub fn get_tokens(filename: &Path, grammar: &Grammar) -> Result<Vec<Token>, Erro
 }
 
 /// Performs parsing using LLLR and returns the list of rules.
-pub fn parse_lllr(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Error> {
+pub fn parse_lllr(tokens: &[Token], grammar: &mut Grammar) -> Result<Vec<usize>, Error> {
     let parsing_table = get_parsing_table(grammar, &HashSet::new());
 
     let mut all_conflicts = HashSet::new();
     let mut wrappers = HashMap::new();
+    let mut tables = HashMap::new();
 
     // Find wrappers for conflicting symbols.
     if let Err(conflicts) = parsing_table {
@@ -157,9 +158,6 @@ pub fn parse_lllr(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Err
         }
     }
 
-    let mut grammar = grammar.clone();
-    let mut tables = HashMap::new();
-
     // Wrap conflicting symbols.
     let wrappers: Vec<(usize, (usize, usize), usize)> =
         util::to_sorted_vec(wrappers.values().flat_map(identity).cloned())
@@ -196,19 +194,19 @@ pub fn parse_lllr(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Err
     };
 
     let mut input = get_input(tokens);
-    let mut stack = vec![Symbol::Start.id()];
+    let mut stack = vec![(Symbol::Start.id(), 0)];
     let mut rules = Vec::new();
 
     while !input.is_empty() && !stack.is_empty() {
-        let &symbol = stack.last().unwrap();
-        let token = input.front().unwrap();
+        let &(symbol, _) = stack.last().unwrap();
+        let token = input.front().cloned().unwrap();
 
         if let Some(&rule) = parsing_table.get(&(symbol, token.symbol)) {
             stack.pop();
 
             for &symbol in grammar.rule(rule).body.iter().rev() {
                 if symbol != Symbol::Null.id() {
-                    stack.push(symbol);
+                    stack.push((symbol, 0));
                 }
             }
 
@@ -216,8 +214,72 @@ pub fn parse_lllr(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Err
             continue;
         }
 
-        if let Some(_data) = tables.get(&symbol) {
-            return Err(Error::Internal);
+        if let Some(data) = tables.get(&symbol) {
+            let mut lr_rules = Vec::new();
+            input.push_front(Token::end());
+
+            let is_valid = loop {
+                if stack.is_empty() {
+                    break false;
+                }
+
+                let &(_, state) = stack.last().unwrap();
+                let token = input.front().cloned().unwrap_or_else(Token::null);
+                let action = data.action_table.get(&(state, token.symbol));
+
+                if action.is_none() {
+                    break false;
+                }
+
+                match action.unwrap() {
+                    Action::Shift(state) => {
+                        stack.push((token.symbol, *state));
+                        input.pop_front();
+                    }
+                    Action::Reduce(rule) => {
+                        let rule = grammar.rule(*rule);
+
+                        // Ignore the starting $ symbol in derived rules.
+                        let mut body = rule.body.clone();
+                        if tables.contains_key(&rule.head) {
+                            body.remove(0);
+                        }
+
+                        reduce_rule(&mut stack, &body)?;
+
+                        let &(_, state) = stack.last().unwrap();
+                        let state = match data.goto_table.get(&(state, rule.head)) {
+                            Some(&state) => state,
+                            None => return Err(Error::Internal),
+                        };
+
+                        lr_rules.push(rule.id);
+                        stack.push((rule.head, state));
+                    }
+                    Action::Accept(rule) => {
+                        let rule = grammar.rule(*rule);
+
+                        let mut body = rule.body.clone();
+                        body.insert(0, rule.head);
+                        reduce_rule(&mut stack, &body)?;
+
+                        lr_rules.push(rule.id);
+                        break true;
+                    }
+                }
+            };
+
+            if !is_valid {
+                return match input.pop_front() {
+                    Some(token) => Err(Error::Parse(token)),
+                    None => Err(Error::EOF),
+                };
+            }
+
+            lr_rules.reverse();
+            rules.extend(lr_rules);
+
+            continue;
         }
 
         if symbol != token.symbol {
@@ -408,9 +470,9 @@ fn get_input(tokens: &[Token]) -> VecDeque<Token> {
     input
 }
 
-/// Removes the rule body from the stack.
-fn reduce_rule(stack: &mut Vec<(usize, usize)>, body: &[usize]) -> Result<(), Error> {
-    for &id in body.iter().rev() {
+/// Removes the rule symbols from the stack.
+fn reduce_rule(stack: &mut Vec<(usize, usize)>, symbols: &[usize]) -> Result<(), Error> {
+    for &id in symbols.iter().rev() {
         if id == Symbol::Null.id() {
             continue;
         }

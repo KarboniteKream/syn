@@ -27,8 +27,24 @@ pub struct Item {
 }
 
 impl Item {
+    pub fn initial(id: usize, rule: &Rule, lookahead: usize) -> Item {
+        Item {
+            id,
+            rule: rule.id,
+            dot: 0,
+            head: Some(rule.body[0]),
+            lookahead,
+            unique: true,
+        }
+    }
+
     pub fn new(id: usize, rule: &Rule, lookahead: usize, unique: bool) -> Item {
-        let dot = 0;
+        let mut dot = 0;
+
+        // Ignore the starting $ symbol in derived rules.
+        if rule.body[dot] == Symbol::End.id() {
+            dot += 1;
+        }
 
         Item {
             id,
