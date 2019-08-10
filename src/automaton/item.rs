@@ -41,7 +41,7 @@ impl Item {
     pub fn new(id: usize, rule: &Rule, lookahead: usize, unique: bool) -> Item {
         let mut dot = 0;
 
-        // Ignore the starting $ symbol in derived rules.
+        // Ignore the starting $ symbol in wrapper rules.
         if rule.body[dot] == Symbol::End.id() {
             dot += 1;
         }

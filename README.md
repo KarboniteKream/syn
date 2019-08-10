@@ -7,10 +7,11 @@ A syntax parser based on the [LLLR] method.
 
 ## Usage
 ```bash
-syn <INPUT> -g GRAMMAR [-o OUTPUT]
+syn <INPUT> -g GRAMMAR [-p lllr] [-o OUTPUT]
 ```
 
 The optional argument `-o` specifies the desired output file for a graph in the [DOT] language.
+This is only available with the LR parser.
 
 ## Grammar
 Grammar files are defined using the [TOML] format.

@@ -239,7 +239,7 @@ pub fn parse_lllr(tokens: &[Token], grammar: &mut Grammar) -> Result<Vec<usize>,
                     Action::Reduce(rule) => {
                         let rule = grammar.rule(*rule);
 
-                        // Ignore the starting $ symbol in derived rules.
+                        // Ignore the starting $ symbol in wrapper rules.
                         let mut body = rule.body.clone();
                         if tables.contains_key(&rule.head) {
                             body.remove(0);
