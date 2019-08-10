@@ -16,27 +16,71 @@ mod token;
 use span::Span;
 use token::Token;
 
-/// Parses the input file and returns the list of rules.
-pub fn parse_file(filename: &Path, grammar: &Grammar, data: &Data) -> Result<Vec<usize>, Error> {
-    let tokens = get_tokens(filename, grammar)?;
+/// Returns the list of tokens in the input file using lexical analysis.
+pub fn get_tokens(filename: &Path, grammar: &Grammar) -> Result<Vec<Token>, Error> {
+    let source: Vec<char> = match fs::read_to_string(filename) {
+        Ok(contents) => contents.chars().collect(),
+        Err(error) => return Err(Error::File(error.to_string())),
+    };
 
-    if tokens.is_empty() {
-        return Ok(Vec::new());
+    let mut idx = 0;
+    let mut position = (1, 1);
+
+    let mut current_match;
+    let mut text = String::new();
+    let mut span = Span::new(position);
+
+    let mut last_token: Option<(Token, usize)> = None;
+    let mut tokens = Vec::new();
+
+    while idx < source.len() {
+        let ch = source[idx];
+
+        text.push(ch);
+        current_match = grammar.find_symbol(&text);
+
+        // There should always be at least a partial match.
+        if current_match.is_none() && last_token.is_none() {
+            return Err(Error::Token(text, span));
+        }
+
+        // If there's no match for the current string, take the last match.
+        if current_match.is_none() {
+            let (token, end_idx) = last_token.unwrap();
+
+            // Ignore ϵ symbols.
+            if token.symbol != Symbol::Null.id() {
+                tokens.push(token.clone());
+            }
+
+            // Seek back to the end of the last match.
+            let ch = token.last().unwrap();
+            position = advance(token.span.end, ch);
+            idx = end_idx + 1;
+
+            text = String::new();
+            span = Span::new(position);
+            last_token = None;
+
+            continue;
+        }
+
+        // Save the current full match.
+        if let Some((id, true)) = current_match {
+            let token = Token::new(id, text.clone(), span);
+            last_token = Some((token, idx));
+        }
+
+        position = advance(position, ch);
+        span.end = position;
+        idx += 1;
     }
 
-    if let Ok(rules) = parse_lllr(&tokens, grammar) {
-        return Ok(rules);
-    }
-
-    if let Ok(rules) = parse_ll(&tokens, grammar) {
-        return Ok(rules);
-    }
-
-    parse_lr(&tokens, grammar, data)
+    Ok(tokens)
 }
 
-/// Performs parsing using LLLR.
-fn parse_lllr(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Error> {
+/// Performs parsing using LLLR and returns the list of rules.
+pub fn parse_lllr(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Error> {
     let parsing_table = get_parsing_table(grammar, &HashSet::new());
 
     let mut all_conflicts = HashSet::new();
@@ -195,8 +239,8 @@ fn parse_lllr(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Error> 
     Ok(rules)
 }
 
-/// Performs parsing using LL(1).
-fn parse_ll(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Error> {
+/// Performs parsing using LL(1) and returns the list of rules.
+pub fn parse_ll(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Error> {
     let parsing_table = match get_parsing_table(grammar, &HashSet::new()) {
         Ok(parsing_table) => parsing_table,
         Err(conflicts) => {
@@ -245,8 +289,8 @@ fn parse_ll(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Error> {
     Ok(rules)
 }
 
-/// Performs parsing using LR(1).
-fn parse_lr(tokens: &[Token], grammar: &Grammar, data: &Data) -> Result<Vec<usize>, Error> {
+/// Performs parsing using LR(1) and returns the list of rules.
+pub fn parse_lr(tokens: &[Token], grammar: &Grammar, data: &Data) -> Result<Vec<usize>, Error> {
     let mut input = get_input(tokens);
     let mut stack = vec![(Symbol::Start.id(), 0)];
     let mut rules = Vec::new();
@@ -271,12 +315,7 @@ fn parse_lr(tokens: &[Token], grammar: &Grammar, data: &Data) -> Result<Vec<usiz
             }
             Action::Reduce(rule) => {
                 let rule = grammar.rule(*rule);
-
-                for id in rule.body.iter().rev() {
-                    if stack.pop().filter(|(symbol, _)| symbol == id).is_none() {
-                        return Err(Error::Internal);
-                    }
-                }
+                reduce_rule(&mut stack, &rule.body)?;
 
                 let &(_, state) = stack.last().unwrap();
                 let state = match data.goto_table.get(&(state, rule.head)) {
@@ -288,7 +327,13 @@ fn parse_lr(tokens: &[Token], grammar: &Grammar, data: &Data) -> Result<Vec<usiz
                 stack.push((rule.head, state));
             }
             Action::Accept(rule) => {
-                rules.push(*rule);
+                let rule = grammar.rule(*rule);
+
+                let mut body = rule.body.clone();
+                body.insert(0, rule.head);
+                reduce_rule(&mut stack, &body)?;
+
+                rules.push(rule.id);
                 break true;
             }
         }
@@ -299,6 +344,10 @@ fn parse_lr(tokens: &[Token], grammar: &Grammar, data: &Data) -> Result<Vec<usiz
             Some(token) => Err(Error::Parse(token)),
             None => Err(Error::EOF),
         };
+    }
+
+    if !stack.is_empty() {
+        return Err(Error::Internal);
     }
 
     rules.reverse();
@@ -338,69 +387,6 @@ fn get_parsing_table(
     Ok(parsing_table)
 }
 
-/// Returns the list of tokens in the input file using lexical analysis.
-fn get_tokens(filename: &Path, grammar: &Grammar) -> Result<Vec<Token>, Error> {
-    let source: Vec<char> = match fs::read_to_string(filename) {
-        Ok(contents) => contents.chars().collect(),
-        Err(error) => return Err(Error::File(error.to_string())),
-    };
-
-    let mut idx = 0;
-    let mut position = (1, 1);
-
-    let mut current_match;
-    let mut text = String::new();
-    let mut span = Span::new(position);
-
-    let mut last_token: Option<(Token, usize)> = None;
-    let mut tokens = Vec::new();
-
-    while idx < source.len() {
-        let ch = source[idx];
-
-        text.push(ch);
-        current_match = grammar.find_symbol(&text);
-
-        // There should always be at least a partial match.
-        if current_match.is_none() && last_token.is_none() {
-            return Err(Error::Token(text, span));
-        }
-
-        // If there's no match for the current string, take the last match.
-        if current_match.is_none() {
-            let (token, end_idx) = last_token.unwrap();
-
-            // Ignore ϵ symbols.
-            if token.symbol != Symbol::Null.id() {
-                tokens.push(token.clone());
-            }
-
-            // Seek back to the end of the last match.
-            let ch = token.last().unwrap();
-            position = advance(token.span.end, ch);
-            idx = end_idx + 1;
-
-            text = String::new();
-            span = Span::new(position);
-            last_token = None;
-
-            continue;
-        }
-
-        // Save the current full match.
-        if let Some((id, true)) = current_match {
-            let token = Token::new(id, text.clone(), span);
-            last_token = Some((token, idx));
-        }
-
-        position = advance(position, ch);
-        span.end = position;
-        idx += 1;
-    }
-
-    Ok(tokens)
-}
-
 /// Advances the position in the file based on the current character.
 fn advance(position: (usize, usize), ch: char) -> (usize, usize) {
     let (row, column) = position;
@@ -420,6 +406,21 @@ fn get_input(tokens: &[Token]) -> VecDeque<Token> {
     input.push_back(Token::end());
 
     input
+}
+
+/// Removes the rule body from the stack.
+fn reduce_rule(stack: &mut Vec<(usize, usize)>, body: &[usize]) -> Result<(), Error> {
+    for &id in body.iter().rev() {
+        if id == Symbol::Null.id() {
+            continue;
+        }
+
+        if stack.pop().filter(|&(symbol, _)| symbol == id).is_none() {
+            return Err(Error::Internal);
+        }
+    }
+
+    Ok(())
 }
 
 #[derive(Debug)]

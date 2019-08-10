@@ -26,7 +26,7 @@ pub fn parse_args<'a>() -> ArgMatches<'a> {
         .author(crate_authors!())
         .arg(
             Arg::with_name("input")
-                .value_name("INPUT")
+                .value_name("FILE")
                 .help("Input file name")
                 .required(true),
         )
@@ -34,17 +34,25 @@ pub fn parse_args<'a>() -> ArgMatches<'a> {
             Arg::with_name("grammar")
                 .long("grammar")
                 .short("g")
-                .value_name("GRAMMAR")
+                .value_name("FILE")
                 .help("Grammar file name")
                 .required(true),
+        )
+        .arg(
+            Arg::with_name("parser")
+                .help("Parser name")
+                .long("parser")
+                .short("p")
+                .value_name("NAME")
+                .possible_values(&["lllr", "ll", "lr"])
+                .default_value("lllr"),
         )
         .arg(
             Arg::with_name("output")
                 .long("output")
                 .short("o")
-                .value_name("OUTPUT")
-                .help("Output file name")
-                .takes_value(true),
+                .value_name("FILE")
+                .help("Output file name for the LR automaton"),
         )
         .get_matches()
 }
