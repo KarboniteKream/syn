@@ -423,10 +423,10 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            Error::NoSymbol(symbol) => write!(f, "Symbol {} does not exist", symbol),
-            Error::Unreachable(symbol) => write!(f, "Symbol {} is unreachable", symbol),
-            Error::LeftRecursive(symbol) => write!(f, "Symbol {} is left recursive", symbol),
-            Error::NotRealizable(symbol) => write!(f, "Symbol {} is not realizable", symbol),
+            Self::NoSymbol(symbol) => write!(f, "Symbol {} does not exist", symbol),
+            Self::Unreachable(symbol) => write!(f, "Symbol {} is unreachable", symbol),
+            Self::LeftRecursive(symbol) => write!(f, "Symbol {} is left recursive", symbol),
+            Self::NotRealizable(symbol) => write!(f, "Symbol {} is not realizable", symbol),
         }
     }
 }

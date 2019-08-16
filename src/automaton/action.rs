@@ -16,9 +16,9 @@ pub enum Action {
 impl Display for Action {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            Action::Shift(state) => write!(f, "s{}", state),
-            Action::Reduce(rule) => write!(f, "r{}", rule),
-            Action::Accept(rule) => write!(f, "acc{}", rule),
+            Self::Shift(state) => write!(f, "s{}", state),
+            Self::Reduce(rule) => write!(f, "r{}", rule),
+            Self::Accept(rule) => write!(f, "acc{}", rule),
         }
     }
 }

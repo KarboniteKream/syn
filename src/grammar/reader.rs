@@ -177,7 +177,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
 fn from_table<'a, T: ?Sized>(
     data: &'a Map<String, Value>,
     key: &str,
-    f: &Fn(&'a Value) -> Option<&T>,
+    f: &dyn Fn(&'a Value) -> Option<&T>,
 ) -> Result<&'a T, Error> {
     match data.get(key).and_then(f) {
         Some(value) => Ok(value),
@@ -221,11 +221,11 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            Error::File(error) => write!(f, "Cannot read file {}", error),
-            Error::Key(name) => write!(f, "Cannot parse key '{}'", name),
-            Error::Regex(pattern) => write!(f, "Cannot parse expression /{}/", pattern),
-            Error::Rule(name) => write!(f, "Cannot parse rule {}", name),
-            Error::Token(name) => write!(f, "Cannot parse token '{}'", name),
+            Self::File(error) => write!(f, "Cannot read file {}", error),
+            Self::Key(name) => write!(f, "Cannot parse key '{}'", name),
+            Self::Regex(pattern) => write!(f, "Cannot parse expression /{}/", pattern),
+            Self::Rule(name) => write!(f, "Cannot parse rule {}", name),
+            Self::Token(name) => write!(f, "Cannot parse token '{}'", name),
         }
     }
 }

@@ -117,61 +117,19 @@ impl State {
                         Symbol::Null.id(),
                     );
 
-                    // If the item derives to an existing one, update it accordingly.
+                    // If the item derives an existing one, update it accordingly.
                     if let Some(existing) = buffer.get(&next_item) {
                         let existing = next_items[existing.id];
 
                         transition.to.1 = existing.id;
                         transitions.insert(transition);
 
-                        if !existing.unique {
-                            continue;
-                        }
-
-                        if existing.id == item.id {
-                            // If the item derives itself, it's not unique.
-                            next_items[existing.id].unique = false;
-                        } else {
-                            // All its parents must be unique and represent the same rule.
-                            let parents: Vec<&Item> = transitions
-                                .iter()
-                                .filter(|transition| transition.to.1 == existing.id)
-                                .map(|transition| transition.from.1)
-                                .filter_map(|idx| next_items.get(idx))
-                                .collect();
-
-                            next_items[existing.id].unique = parents.iter().all(|item| {
-                                item.unique
-                                    && item.rule == parents[0].rule
-                                    && item.dot == parents[0].dot
-                            });
-                        }
-
-                        // Recursively update its derived items.
-                        if !next_items[existing.id].unique {
-                            let mut non_unique = HashSet::new();
-                            non_unique.insert(existing.id);
-
-                            loop {
-                                non_unique = transitions
-                                    .iter()
-                                    .filter(|transition| {
-                                        transition.from.0 == state_id
-                                            && next_items[transition.to.1].unique
-                                            && non_unique.contains(&transition.from.1)
-                                    })
-                                    .map(|transition| transition.to.1)
-                                    .collect();
-
-                                if non_unique.is_empty() {
-                                    break;
-                                }
-
-                                for &id in &non_unique {
-                                    next_items[id].unique = false;
-                                }
-                            }
-                        }
+                        verify_unique(
+                            existing.id,
+                            (state_id, item.id),
+                            &mut next_items,
+                            &transitions,
+                        );
 
                         continue;
                     }
@@ -246,6 +204,62 @@ impl State {
             .join("; ");
 
         format!("({}) [{}]", self.id, items)
+    }
+}
+
+fn verify_unique(
+    id: usize,
+    from: (usize, usize),
+    items: &mut Vec<Item>,
+    transitions: &HashSet<ItemTransition>,
+) {
+    if !items[id].unique {
+        return;
+    }
+
+    if id == from.1 {
+        // If the item derives itself, it's not unique.
+        items[id].unique = false;
+    } else {
+        // All its parents must be unique and represent the same rule.
+        let parents: Vec<&Item> = transitions
+            .iter()
+            .filter(|transition| transition.to.1 == id)
+            .map(|transition| transition.from.1)
+            .filter_map(|idx| items.get(idx))
+            .collect();
+
+        items[id].unique = parents
+            .iter()
+            .all(|item| item.unique && item.rule == parents[0].rule && item.dot == parents[0].dot);
+    }
+
+    if items[id].unique {
+        return;
+    }
+
+    // Recursively update its derived items.
+    let mut non_unique = HashSet::new();
+    non_unique.insert(id);
+
+    loop {
+        non_unique = transitions
+            .iter()
+            .filter(|transition| {
+                transition.from.0 == from.0
+                    && items[transition.to.1].unique
+                    && non_unique.contains(&transition.from.1)
+            })
+            .map(|transition| transition.to.1)
+            .collect();
+
+        if non_unique.is_empty() {
+            break;
+        }
+
+        for &id in &non_unique {
+            items[id].unique = false;
+        }
     }
 }
 

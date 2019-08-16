@@ -498,12 +498,12 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            Error::Conflict(symbol) => write!(f, "Conflict in table for {}", symbol),
-            Error::EOF => write!(f, "Unexpected end of file"),
-            Error::File(error) => write!(f, "Cannot read file {}", error),
-            Error::Internal => write!(f, "Internal error"),
-            Error::Parse(token) => write!(f, "Unexpected token {}", token),
-            Error::Token(lexeme, span) => {
+            Self::Conflict(symbol) => write!(f, "Conflict in table for {}", symbol),
+            Self::EOF => write!(f, "Unexpected end of file"),
+            Self::File(error) => write!(f, "Cannot read file {}", error),
+            Self::Internal => write!(f, "Internal error"),
+            Self::Parse(token) => write!(f, "Unexpected token {}", token),
+            Self::Token(lexeme, span) => {
                 let lexeme = lexeme.escape_default();
                 write!(f, "Cannot recognize token '{}' @ {}", lexeme, span)
             }

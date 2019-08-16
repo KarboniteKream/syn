@@ -35,7 +35,7 @@ commands:
 jobs:
   style:
     docker:
-      - image: circleci/rust:1
+      - image: circleci/rust:latest
 
     steps:
       - setup
@@ -46,7 +46,6 @@ jobs:
       - run:
           name: rustfmt
           command: |
-            rustup component add rustfmt
             cargo fmt --all -- --check
 
       - run:
@@ -57,7 +56,7 @@ jobs:
 
   build:
     docker:
-      - image: circleci/rust:1
+      - image: circleci/rust:latest
 
     steps:
       - setup
@@ -69,7 +68,7 @@ jobs:
 
   test:
     docker:
-      - image: circleci/rust:1
+      - image: circleci/rust:latest
 
     steps:
       - setup

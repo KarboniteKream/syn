@@ -22,27 +22,27 @@ pub enum Symbol {
 impl Symbol {
     /// Returns a list of internal symbols.
     pub fn internal() -> Vec<Symbol> {
-        vec![Symbol::Start, Symbol::End, Symbol::Null]
+        vec![Self::Start, Self::End, Self::Null]
     }
 
     /// Returns the ID of the symbol.
     pub fn id(&self) -> usize {
         match self {
-            Symbol::Start => 0,
-            Symbol::End => 1,
-            Symbol::Null => 2,
-            Symbol::NonTerminal(id, _) | Symbol::Terminal(id, _) => *id,
+            Self::Start => 0,
+            Self::End => 1,
+            Self::Null => 2,
+            Self::NonTerminal(id, _) | Self::Terminal(id, _) => *id,
         }
     }
 
     /// Returns the name of the symbol.
     pub fn name(&self) -> String {
         match self {
-            Symbol::Start => "^".to_owned(),
-            Symbol::End => "$".to_owned(),
-            Symbol::Null => "ϵ".to_owned(),
-            Symbol::NonTerminal(_, name) => name.clone(),
-            Symbol::Terminal(_, name) => {
+            Self::Start => "^".to_owned(),
+            Self::End => "$".to_owned(),
+            Self::Null => "ϵ".to_owned(),
+            Self::NonTerminal(_, name) => name.clone(),
+            Self::Terminal(_, name) => {
                 if name.contains('\'') {
                     format!("\"{}\"", name)
                 } else {
@@ -55,7 +55,7 @@ impl Symbol {
     /// Returns `true` if the symbol is terminal.
     pub fn is_terminal(&self) -> bool {
         match self {
-            Symbol::NonTerminal(..) => false,
+            Self::NonTerminal(..) => false,
             _ => true,
         }
     }
@@ -68,7 +68,7 @@ impl Symbol {
     /// Returns `true` if the symbol is internal.
     pub fn is_internal(&self) -> bool {
         match self {
-            Symbol::NonTerminal(..) | Symbol::Terminal(..) => false,
+            Self::NonTerminal(..) | Self::Terminal(..) => false,
             _ => true,
         }
     }

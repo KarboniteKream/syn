@@ -329,7 +329,7 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            Error::ActionConflict(state, symbol) => {
+            Self::ActionConflict(state, symbol) => {
                 write!(f, "Shift/Reduce conflict in ACTION({}, {})", state, symbol)
             }
         }
