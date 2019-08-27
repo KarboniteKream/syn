@@ -5,13 +5,15 @@ use std::fmt::{self, Display, Formatter};
 
 use regex::Regex;
 
-use crate::rule::Rule;
-use crate::symbol::Symbol;
 use crate::util;
 
 mod reader;
+mod rule;
+mod symbol;
 
 pub use reader::read_file;
+pub use rule::Rule;
+pub use symbol::Symbol;
 
 /// The `Grammar` struct describes a grammar to parse the input file with.
 #[derive(Clone, Debug)]

@@ -8,8 +8,9 @@ use regex::{self, Regex};
 use toml::{map::Map, Value};
 
 use crate::grammar::Grammar;
-use crate::rule::Rule;
-use crate::symbol::Symbol;
+
+use super::rule::Rule;
+use super::symbol::Symbol;
 
 /// Read the specified file, and constructs the grammar.
 pub fn read_file(filename: &Path) -> Result<Grammar, Error> {

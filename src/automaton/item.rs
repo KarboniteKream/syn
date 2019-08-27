@@ -1,9 +1,7 @@
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 
-use crate::grammar::Grammar;
-use crate::rule::Rule;
-use crate::symbol::Symbol;
+use crate::grammar::{Grammar, Rule, Symbol};
 use crate::util::AsString;
 
 /// The `Item` struct describes an item of a state in an automaton.

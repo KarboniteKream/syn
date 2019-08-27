@@ -6,8 +6,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::automaton::{Action, Automaton, Data};
-use crate::grammar::Grammar;
-use crate::symbol::Symbol;
+use crate::grammar::{Grammar, Symbol};
 use crate::util::{self, Table};
 
 mod span;
@@ -30,7 +29,7 @@ pub fn get_tokens(filename: &Path, grammar: &Grammar) -> Result<Vec<Token>, Erro
     let mut text = String::new();
     let mut span = Span::new(position);
 
-    let mut last_token: Option<(Token, usize)> = None;
+    let mut last_match: Option<(Token, usize)> = None;
     let mut tokens = Vec::new();
 
     while idx < source.len() {
@@ -40,13 +39,13 @@ pub fn get_tokens(filename: &Path, grammar: &Grammar) -> Result<Vec<Token>, Erro
         current_match = grammar.find_symbol(&text);
 
         // There should always be at least a partial match.
-        if current_match.is_none() && last_token.is_none() {
+        if current_match.is_none() && last_match.is_none() {
             return Err(Error::Token(text, span));
         }
 
         // If there's no match for the current string, take the last match.
         if current_match.is_none() {
-            let (token, end_idx) = last_token.unwrap();
+            let (token, end_idx) = last_match.unwrap();
 
             // Ignore ϵ symbols.
             if token.symbol != Symbol::Null.id() {
@@ -60,7 +59,7 @@ pub fn get_tokens(filename: &Path, grammar: &Grammar) -> Result<Vec<Token>, Erro
 
             text = String::new();
             span = Span::new(position);
-            last_token = None;
+            last_match = None;
 
             continue;
         }
@@ -68,7 +67,7 @@ pub fn get_tokens(filename: &Path, grammar: &Grammar) -> Result<Vec<Token>, Erro
         // Save the current full match.
         if let Some((id, true)) = current_match {
             let token = Token::new(id, text.clone(), span);
-            last_token = Some((token, idx));
+            last_match = Some((token, idx));
         }
 
         position = advance(position, ch);

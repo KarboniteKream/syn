@@ -2,8 +2,7 @@ use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 
-use crate::grammar::Grammar;
-use crate::symbol::Symbol;
+use crate::grammar::{Grammar, Symbol};
 use crate::util::AsString;
 
 /// The `Rule` struct describes a grammar rule.

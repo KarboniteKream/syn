@@ -4,8 +4,7 @@ use std::hash::{Hash, Hasher};
 
 use indexmap::IndexSet;
 
-use crate::grammar::Grammar;
-use crate::symbol::Symbol;
+use crate::grammar::{Grammar, Symbol};
 use crate::util::{self, AsString};
 
 use super::item::Item;

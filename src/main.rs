@@ -5,8 +5,6 @@ use std::process;
 mod automaton;
 mod grammar;
 mod parser;
-mod rule;
-mod symbol;
 mod util;
 
 use automaton::Automaton;

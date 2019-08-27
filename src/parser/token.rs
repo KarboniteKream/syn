@@ -1,6 +1,6 @@
 use std::fmt::{self, Display, Formatter};
 
-use crate::symbol::Symbol;
+use crate::grammar::Symbol;
 
 use super::span::Span;
 
