@@ -3,14 +3,14 @@ use std::collections::{HashMap, HashSet};
 use std::error;
 use std::fmt::{self, Display, Formatter};
 
-use regex::Regex;
-
 use crate::util;
 
+mod matcher;
 mod reader;
 mod rule;
 mod symbol;
 
+use matcher::{Match, Matcher};
 pub use reader::read_file;
 pub use rule::Rule;
 pub use symbol::Symbol;
@@ -21,8 +21,7 @@ pub struct Grammar {
     pub name: String,
     description: String,
     pub symbols: Vec<Symbol>,
-    // List of regular expressions for a specific symbol.
-    tokens: Vec<(usize, Regex)>,
+    matchers: Vec<(usize, Matcher)>,
     start_symbol: usize,
     pub rules: Vec<Rule>,
     // List of rules for a specific symbol.
@@ -36,7 +35,7 @@ impl Grammar {
         name: String,
         description: String,
         symbols: Vec<Symbol>,
-        tokens: Vec<(usize, Regex)>,
+        matchers: Vec<(usize, Matcher)>,
         rules: Vec<Rule>,
         start_symbol: usize,
     ) -> Grammar {
@@ -52,7 +51,7 @@ impl Grammar {
             name,
             description,
             symbols,
-            tokens,
+            matchers,
             start_symbol,
             rules,
             symbol_rules,
@@ -375,16 +374,12 @@ impl Grammar {
     pub fn find_symbol(&self, text: &str) -> Option<(usize, bool)> {
         let mut symbol = None;
 
-        for (id, regex) in &self.tokens {
-            let captures = match regex.captures(text) {
-                Some(captures) => captures,
-                None => continue,
+        for (id, matcher) in &self.matchers {
+            let is_full_match = match matcher.match_str(text) {
+                Match::Full => true,
+                Match::Partial => false,
+                Match::None => continue,
             };
-
-            // If the last capture group is None or empty, the match is partial.
-            let is_full_match = captures
-                .get(captures.len() - 1)
-                .map_or(false, |m| !m.as_str().is_empty());
 
             if is_full_match {
                 return Some((*id, true));

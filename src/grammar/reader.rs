@@ -7,7 +7,7 @@ use std::path::Path;
 use regex::{self, Regex};
 use toml::{map::Map, Value};
 
-use crate::grammar::Grammar;
+use crate::grammar::{Grammar, Matcher};
 
 use super::rule::Rule;
 use super::symbol::Symbol;
@@ -100,7 +100,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
         }
     }
 
-    let mut tokens = Vec::new();
+    let mut matchers = Vec::new();
 
     // Generate regular expressions for all terminal symbols.
     for symbol in &symbols {
@@ -109,14 +109,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
             _ => continue,
         };
 
-        let pattern = format!("^{}$", regex::escape(name));
-
-        let regex = match Regex::new(&pattern) {
-            Ok(regex) => regex,
-            Err(_) => return Err(Error::Regex(pattern)),
-        };
-
-        tokens.push((id, regex));
+        matchers.push((id, Matcher::Text(name.to_owned())));
     }
 
     let definitions = from_table(data, "tokens", &Value::as_table)
@@ -140,9 +133,9 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
         };
 
         // Replace the regular expression, generated from the symbol name.
-        let idx = tokens.iter().position(|&(id, _)| id == symbol).unwrap();
-        tokens.remove(idx);
-        tokens.push((symbol, regex));
+        let idx = matchers.iter().position(|&(id, _)| id == symbol).unwrap();
+        matchers.remove(idx);
+        matchers.push((symbol, Matcher::Regex(regex)));
     }
 
     let definitions = from_table(data, "ignore", &Value::as_table)
@@ -161,14 +154,14 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
         };
 
         // All ignored tokens correspond to ϵ symbols.
-        tokens.push((Symbol::Null.id(), regex));
+        matchers.push((Symbol::Null.id(), Matcher::Regex(regex)));
     }
 
     Ok(Grammar::new(
         name,
         description,
         symbols,
-        tokens,
+        matchers,
         rules,
         start_symbol,
     ))
