@@ -62,6 +62,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
 
     let mut names: HashMap<String, usize> = symbols
         .iter()
+        .skip(Symbol::internal().len())
         .map(|symbol| (symbol.name(), symbol.id()))
         .collect();
 

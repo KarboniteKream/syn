@@ -75,6 +75,10 @@ pub fn get_tokens(filename: &Path, grammar: &Grammar) -> Result<Vec<Token>, Erro
         idx += 1;
     }
 
+    if last_match.is_none() {
+        return Err(Error::Token(text, span));
+    }
+
     Ok(tokens)
 }
 

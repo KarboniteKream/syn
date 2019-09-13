@@ -327,6 +327,7 @@ impl Grammar {
             let rules = self
                 .symbols
                 .iter()
+                .filter(|symbol| symbol.is_nonterminal())
                 .find(|symbol| symbol.name() == name)
                 .map(|symbol| self.rules(symbol.id()));
 

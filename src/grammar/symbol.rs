@@ -62,7 +62,10 @@ impl Symbol {
 
     /// Returns `true` if the symbol is nonterminal.
     pub fn is_nonterminal(&self) -> bool {
-        !self.is_terminal()
+        match self {
+            Self::NonTerminal(..) => true,
+            _ => false,
+        }
     }
 
     /// Returns `true` if the symbol is internal.
