@@ -317,6 +317,9 @@ impl Grammar {
     pub fn wrap_symbols(&mut self, symbols: &[usize], follow: &[usize]) -> usize {
         let head = self.symbol(symbols[0]);
 
+        let mut body = vec![Symbol::End.id()];
+        body.extend_from_slice(symbols);
+
         let id = head.id();
         let mut name = head.name();
 
@@ -335,8 +338,13 @@ impl Grammar {
                 break;
             }
 
-            // If a rule with the same body already exists, return its ID.
-            if let Some(rule) = rules.unwrap().iter().find(|rule| rule.body == symbols) {
+            let rule = rules
+                .unwrap()
+                .iter()
+                .cloned()
+                .find(|rule| rule.body == body && rule.follow == follow);
+
+            if let Some(rule) = rule {
                 return rule.id;
             }
         }
@@ -346,8 +354,7 @@ impl Grammar {
         let symbol = Symbol::NonTerminal(symbol_id, name);
 
         let rule_id = self.rules.len();
-        let mut rule = Rule::new(rule_id, symbol_id, vec![Symbol::End.id()], follow.to_vec());
-        rule.body.extend_from_slice(symbols);
+        let rule = Rule::new(rule_id, symbol_id, body, follow.to_vec());
 
         self.symbols.push(symbol);
         self.rules.push(rule);
