@@ -4,6 +4,7 @@ use std::process;
 
 mod automaton;
 mod grammar;
+mod lexer;
 mod parser;
 mod util;
 
@@ -28,7 +29,7 @@ fn main() {
     }
 
     let filename = args.value_of("input").unwrap();
-    let tokens = match parser::get_tokens(Path::new(filename), &grammar) {
+    let tokens = match lexer::get_tokens(Path::new(filename), &grammar) {
         Ok(tokens) => tokens,
         Err(error) => {
             eprintln!("Input file '{}' cannot be parsed: {}", filename, error);
