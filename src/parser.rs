@@ -273,7 +273,7 @@ pub fn parse_lllr(tokens: &[Token], grammar: &mut Grammar) -> Result<Vec<usize>,
             };
 
             if !is_valid {
-                return match input.pop_front() {
+                return match next_token(&mut input, &grammar.symbols) {
                     Some(token) => Err(Error::Parse(token)),
                     None => Err(Error::EOF),
                 };
@@ -293,7 +293,7 @@ pub fn parse_lllr(tokens: &[Token], grammar: &mut Grammar) -> Result<Vec<usize>,
         stack.pop();
     }
 
-    if let Some(token) = input.pop_front() {
+    if let Some(token) = next_token(&mut input, &grammar.symbols) {
         return Err(Error::Parse(token));
     }
 
@@ -343,7 +343,7 @@ pub fn parse_ll(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Error
         stack.pop();
     }
 
-    if let Some(token) = input.pop_front() {
+    if let Some(token) = next_token(&mut input, &grammar.symbols) {
         return Err(Error::Parse(token));
     }
 
@@ -405,7 +405,7 @@ pub fn parse_lr(tokens: &[Token], grammar: &Grammar, data: &Data) -> Result<Vec<
     };
 
     if !is_valid {
-        return match input.pop_front() {
+        return match next_token(&mut input, &grammar.symbols) {
             Some(token) => Err(Error::Parse(token)),
             None => Err(Error::EOF),
         };
@@ -486,6 +486,13 @@ fn reduce_rule(stack: &mut Vec<(usize, usize)>, symbols: &[usize]) -> Result<(),
     }
 
     Ok(())
+}
+
+/// Returns the next input token, ignoring internal symbols.
+fn next_token(input: &mut VecDeque<Token>, symbols: &[Symbol]) -> Option<Token> {
+    input
+        .pop_front()
+        .filter(|token| !symbols[token.symbol].is_internal())
 }
 
 #[derive(Debug)]

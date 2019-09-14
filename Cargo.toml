@@ -7,6 +7,6 @@ edition = "2018"
 
 [dependencies]
 clap = { version = "2.33", default-features = false }
-indexmap = "1.1"
+indexmap = "1.2"
 regex = "1"
 toml = { version = "0.5", features = ["preserve_order"] }
