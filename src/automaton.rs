@@ -110,12 +110,13 @@ impl Automaton {
 
     /// Returns all automaton data tables.
     pub fn data(&self) -> Result<Data, Error> {
-        Ok(Data {
-            action_table: self.action_table()?,
-            goto_table: self.goto_table(),
-            unique_table: self.unique_table(),
-            parse_table: self.parse_table(),
-        })
+        Ok(Data::new(
+            self.action_table()?,
+            self.goto_table(),
+            self.unique_table(),
+            self.parse_table(),
+            &self.items,
+        ))
     }
 
     /// Converts the automaton to the DOT format.
@@ -283,17 +284,12 @@ impl Automaton {
     }
 
     /// Returns the PARSE table of the automaton.
-    /// It describes reverse state transitions between items.
-    fn parse_table(&self) -> Table<usize> {
+    /// It describes reverse transitions between unique items.
+    fn parse_table(&self) -> Table<(usize, usize)> {
         self.item_transitions
             .iter()
-            .map(|ItemTransition { from, to, .. }| {
-                let state = to.0;
-                let from = util::get_index(&self.states[from.0].items, from.1);
-                let to = util::get_index(&self.states[to.0].items, to.1);
-
-                ((to, state), from)
-            })
+            .filter(|transition| self.items[transition.to.1].unique)
+            .map(|transition| (transition.to, transition.from))
             .collect()
     }
 }

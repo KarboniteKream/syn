@@ -17,7 +17,7 @@ pub fn parse_lllr(tokens: &[Token], grammar: &mut Grammar) -> Result<Vec<usize>,
     let mut rules = Vec::new();
 
     while !input.is_empty() && !stack.is_empty() {
-        let &(symbol, _) = stack.last().unwrap();
+        let symbol = stack.last().unwrap().0;
         let token = input.front().cloned().unwrap();
 
         if let Some(&rule) = parsing_table.get(&(symbol, token.symbol)) {
@@ -33,26 +33,47 @@ pub fn parse_lllr(tokens: &[Token], grammar: &mut Grammar) -> Result<Vec<usize>,
             continue;
         }
 
+        // Start the LR parser if necessary.
         if let Some(data) = tables.get(&symbol) {
-            let mut lr_rules = Vec::new();
             input.push_front(Token::end());
+            let mut lr_stack = stack.clone();
+            let mut lr_rules = Vec::new();
 
             let is_valid = loop {
-                if stack.is_empty() {
+                if lr_stack.is_empty() {
                     break false;
                 }
 
-                let &(_, state) = stack.last().unwrap();
+                let state = lr_stack.last().unwrap().1;
                 let token = input.front().cloned().unwrap_or_else(Token::null);
-                let action = data.action_table.get(&(state, token.symbol));
 
-                if action.is_none() {
-                    break false;
+                // Check if the LR parser can stop.
+                if let Some((rule, tail)) = find_unique_rule(grammar, data, state, &token) {
+                    let accept_rule = grammar.rules(symbol)[0].id;
+
+                    lr_rules.push(rule);
+                    stack.pop();
+
+                    if accept_rule != rule {
+                        lr_rules.push(accept_rule);
+                    }
+
+                    // Add the remaining symbols to the LL stack.
+                    for &symbol in tail.iter().rev() {
+                        stack.push((symbol, 0));
+                    }
+
+                    break true;
                 }
 
-                match action.unwrap() {
+                let action = match data.action_table.get(&(state, token.symbol)) {
+                    Some(action) => action,
+                    None => break false,
+                };
+
+                match action {
                     Action::Shift(state) => {
-                        stack.push((token.symbol, *state));
+                        lr_stack.push((token.symbol, *state));
                         input.pop_front();
                     }
                     Action::Reduce(rule) => {
@@ -64,23 +85,23 @@ pub fn parse_lllr(tokens: &[Token], grammar: &mut Grammar) -> Result<Vec<usize>,
                             body.remove(0);
                         }
 
-                        reduce_rule(&mut stack, &body)?;
+                        reduce_rule(&mut lr_stack, &body)?;
 
-                        let &(_, state) = stack.last().unwrap();
-                        let state = match data.goto_table.get(&(state, rule.head)) {
-                            Some(&state) => state,
+                        let state = lr_stack.last().unwrap().1;
+                        let next_state = match data.goto_table.get(&(state, rule.head)) {
+                            Some(&next_state) => next_state,
                             None => return Err(Error::Internal),
                         };
 
                         lr_rules.push(rule.id);
-                        stack.push((rule.head, state));
+                        lr_stack.push((rule.head, next_state));
                     }
                     Action::Accept(rule) => {
                         let rule = grammar.rule(*rule);
 
                         let mut body = rule.body.clone();
                         body.insert(0, rule.head);
-                        reduce_rule(&mut stack, &body)?;
+                        reduce_rule(&mut lr_stack, &body)?;
 
                         lr_rules.push(rule.id);
                         break true;
@@ -181,7 +202,7 @@ pub fn parse_lr(tokens: &[Token], grammar: &Grammar, data: &Data) -> Result<Vec<
             break false;
         }
 
-        let &(_, state) = stack.last().unwrap();
+        let state = stack.last().unwrap().1;
         let token = input.front().cloned().unwrap_or_else(Token::null);
         let action = data.action_table.get(&(state, token.symbol));
 
@@ -198,14 +219,14 @@ pub fn parse_lr(tokens: &[Token], grammar: &Grammar, data: &Data) -> Result<Vec<
                 let rule = grammar.rule(*rule);
                 reduce_rule(&mut stack, &rule.body)?;
 
-                let &(_, state) = stack.last().unwrap();
-                let state = match data.goto_table.get(&(state, rule.head)) {
-                    Some(&state) => state,
+                let state = stack.last().unwrap().1;
+                let next_state = match data.goto_table.get(&(state, rule.head)) {
+                    Some(&next_state) => next_state,
                     None => return Err(Error::Internal),
                 };
 
                 rules.push(rule.id);
-                stack.push((rule.head, state));
+                stack.push((rule.head, next_state));
             }
             Action::Accept(rule) => {
                 let rule = grammar.rule(*rule);
@@ -386,6 +407,48 @@ fn get_lllr_parsing_tables(
     };
 
     Ok((parsing_table, tables))
+}
+
+/// Finds a unique item in the current automaton state.
+/// Returns the rule the item represents and the remaining symbols in the automaton.
+fn find_unique_rule(
+    grammar: &Grammar,
+    data: &Data,
+    state: usize,
+    token: &Token,
+) -> Option<(usize, Vec<usize>)> {
+    if grammar.symbols[token.symbol].is_internal() {
+        return None;
+    }
+
+    // Find the unique item.
+    let mut from = match data.unique_table.get(&(state, token.symbol)) {
+        Some(&item) => (state, item),
+        None => return None,
+    };
+
+    let item = data.items[&from.1];
+    let rule = grammar.rule(item.rule);
+    let mut tail = rule.tail(item.dot).to_vec();
+    let mut current_rule = rule.id;
+
+    // Follow item transitions to find the remaining symbols.
+    loop {
+        let item = data.items[&from.1];
+        let rule = grammar.rule(item.rule);
+
+        if rule.id != current_rule {
+            tail.extend(rule.tail(item.dot).iter().skip(1));
+            current_rule = rule.id;
+        }
+
+        from = match data.parse_table.get(&from) {
+            Some(&to) => to,
+            None => break,
+        };
+    }
+
+    Some((rule.id, tail))
 }
 
 /// Converts tokens to a parser input.

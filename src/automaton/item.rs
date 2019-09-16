@@ -59,11 +59,7 @@ impl Item {
     pub fn pass(&mut self, rule: &Rule) {
         if self.dot < rule.body.len() {
             self.dot += 1;
-
-            self.head = match rule.body.get(self.dot) {
-                Some(&id) => Some(id),
-                None => None,
-            };
+            self.head = rule.body.get(self.dot).cloned();
         }
     }
 
@@ -79,7 +75,7 @@ impl Item {
         tail
     }
 
-    /// Return `head` and all the symbols following it.
+    /// Returns `head` and all the symbols following it, including the lookahead.
     pub fn follow(&self, rule: &Rule) -> Vec<usize> {
         let mut follow = rule.tail(self.dot).to_vec();
         follow.push(self.lookahead);
