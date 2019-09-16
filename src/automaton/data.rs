@@ -10,8 +10,8 @@ use super::item::Item;
 pub struct Data {
     pub action_table: Table<Action>,
     pub goto_table: Table<usize>,
-    pub unique_table: Table<usize>,
-    pub parse_table: Table<(usize, usize)>,
+    pub left_table: Table<usize>,
+    pub backtrack_table: Table<(usize, usize)>,
     pub items: HashMap<usize, Item>,
 }
 
@@ -19,11 +19,11 @@ impl Data {
     pub fn new(
         action_table: Table<Action>,
         goto_table: Table<usize>,
-        unique_table: Table<usize>,
-        parse_table: Table<(usize, usize)>,
+        left_table: Table<usize>,
+        backtrack_table: Table<(usize, usize)>,
         items: &[Item],
     ) -> Data {
-        let items = parse_table
+        let items = backtrack_table
             .iter()
             .flat_map(|(to, from)| vec![to.1, from.1])
             .map(|id| (id, items[id]))
@@ -32,8 +32,8 @@ impl Data {
         Data {
             action_table,
             goto_table,
-            unique_table,
-            parse_table,
+            left_table,
+            backtrack_table,
             items,
         }
     }
@@ -55,7 +55,7 @@ impl AsString for Data {
             .collect::<Vec<String>>()
             .join("\n");
 
-        let unique_table = util::to_sorted_vec(&self.unique_table)
+        let left_table = util::to_sorted_vec(&self.left_table)
             .iter()
             .map(|(&(state, symbol), item)| {
                 format!("{}, {} → {}", state, grammar.symbol(symbol), item)
@@ -63,15 +63,15 @@ impl AsString for Data {
             .collect::<Vec<String>>()
             .join("\n");
 
-        let parse_table = util::to_sorted_vec(&self.parse_table)
+        let backtrack_table = util::to_sorted_vec(&self.backtrack_table)
             .iter()
             .map(|(to, from)| format!("{}, {} → {}, {}", to.0, to.1, from.0, from.1))
             .collect::<Vec<String>>()
             .join("\n");
 
         format!(
-            "ACTION\n{}\n\nGOTO\n{}\n\nUNIQUE\n{}\n\nPARSE\n{}",
-            action_table, goto_table, unique_table, parse_table
+            "ACTION\n{}\n\nGOTO\n{}\n\nLEFT\n{}\n\nBACKTRACK\n{}",
+            action_table, goto_table, left_table, backtrack_table
         )
     }
 }

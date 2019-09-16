@@ -422,7 +422,7 @@ fn find_unique_rule(
     }
 
     // Find the unique item.
-    let mut from = match data.unique_table.get(&(state, token.symbol)) {
+    let mut from = match data.left_table.get(&(state, token.symbol)) {
         Some(&item) => (state, item),
         None => return None,
     };
@@ -442,7 +442,7 @@ fn find_unique_rule(
             current_rule = rule.id;
         }
 
-        from = match data.parse_table.get(&from) {
+        from = match data.backtrack_table.get(&from) {
             Some(&to) => to,
             None => break,
         };

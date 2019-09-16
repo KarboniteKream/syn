@@ -113,8 +113,8 @@ impl Automaton {
         Ok(Data::new(
             self.action_table()?,
             self.goto_table(),
-            self.unique_table(),
-            self.parse_table(),
+            self.left_table(),
+            self.backtrack_table(),
             &self.items,
         ))
     }
@@ -250,11 +250,11 @@ impl Automaton {
             .collect()
     }
 
-    /// Returns the UNIQUE table of the automaton.
+    /// Returns the LEFT table of the automaton.
     ///
-    /// The UNIQUE table describes which item a symbol in a state corresponds to.
+    /// The LEFT table describes which item a symbol in a state corresponds to.
     /// A symbol corresponds to an item, if it's in its FIRST set.
-    fn unique_table(&self) -> Table<usize> {
+    fn left_table(&self) -> Table<usize> {
         self.states
             .iter()
             .flat_map(|state| {
@@ -275,7 +275,7 @@ impl Automaton {
                 })
             })
             .filter(|(_, items)| {
-                // The UNIQUE table only contains symbols
+                // The LEFT table only contains symbols
                 // that correspond to a single, unique item.
                 items.len() == 1 && items[0].unique
             })
@@ -283,9 +283,9 @@ impl Automaton {
             .collect()
     }
 
-    /// Returns the PARSE table of the automaton.
+    /// Returns the BACKTRACK table of the automaton.
     /// It describes reverse transitions between unique items.
-    fn parse_table(&self) -> Table<(usize, usize)> {
+    fn backtrack_table(&self) -> Table<(usize, usize)> {
         self.item_transitions
             .iter()
             .filter(|transition| self.items[transition.to.1].unique)
