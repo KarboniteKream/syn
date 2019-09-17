@@ -104,6 +104,7 @@ pub fn parse_lllr(tokens: &[Token], grammar: &mut Grammar) -> Result<Vec<usize>,
                         reduce_rule(&mut lr_stack, &body)?;
                         lr_rules.push(rule.id);
 
+                        stack.pop();
                         break true;
                     }
                 }
