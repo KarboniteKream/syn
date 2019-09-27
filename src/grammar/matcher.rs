@@ -8,6 +8,9 @@ pub enum Matcher {
 
     /// Compare to a string.
     Text(String),
+
+    /// Compare to a group of strings.
+    Group(Vec<String>),
 }
 
 impl Matcher {
@@ -38,6 +41,19 @@ impl Matcher {
 
                 if string.starts_with(text) {
                     return Match::Partial;
+                }
+
+                Match::None
+            }
+            Self::Group(strings) => {
+                for string in strings {
+                    if string == text {
+                        return Match::Full;
+                    }
+
+                    if string.starts_with(text) {
+                        return Match::Partial;
+                    }
                 }
 
                 Match::None

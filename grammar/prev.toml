@@ -21,6 +21,14 @@ type_definition = [
     "typ identifier : type",
 ]
 
+function_definition = [
+    "fun identifier ( parameters ) : type = expression",
+]
+
+variable_definition = [
+    "var identifier : type",
+]
+
 type = [
     "identifier",
     "logical",
@@ -38,10 +46,6 @@ components = [
 
 component = [
     "identifier : type",
-]
-
-function_definition = [
-    "fun identifier ( parameters ) : type = expression",
 ]
 
 parameters = [
@@ -125,13 +129,13 @@ expressions = [
     "expressions , expression",
 ]
 
-variable_definition = [
-    "var identifier : type",
+[tokens]
+log_constant = [
+    "true",
+    "false",
 ]
 
-[tokens]
 int_constant = "[0-9]+"
-log_constant = "(true|false)"
 str_constant = "'([ -&\\(-~]|'')*('|$)"
 identifier = "[A-Za-z_]+[A-Za-z0-9_]*"
 

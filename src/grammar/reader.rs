@@ -117,45 +117,28 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
         .map(Map::clone)
         .unwrap_or_default();
 
-    for (name, pattern) in definitions {
-        let symbol = match names.get(&name) {
+    for (name, pattern) in &definitions {
+        let symbol = match names.get(name) {
             Some(&symbol) => symbol,
             None => continue,
         };
 
-        let pattern = match pattern.as_str() {
-            Some(value) => format!("^{}$", value),
-            None => return Err(Error::Token(name.to_owned())),
-        };
-
-        let regex = match Regex::new(&pattern) {
-            Ok(pattern) => pattern,
-            Err(_) => return Err(Error::Regex(pattern)),
-        };
-
-        // Replace the regular expression, generated from the symbol name.
+        // Replace the existing regular expression.
         let idx = matchers.iter().position(|&(id, _)| id == symbol).unwrap();
         matchers.remove(idx);
-        matchers.push((symbol, Matcher::Regex(regex)));
+
+        let matcher = create_matcher(name, pattern)?;
+        matchers.push((symbol, matcher));
     }
 
     let definitions = from_table(data, "ignore", &Value::as_table)
         .map(Map::clone)
         .unwrap_or_default();
 
-    for (name, pattern) in definitions {
-        let pattern = match pattern.as_str() {
-            Some(value) => format!("^{}$", value),
-            None => return Err(Error::Token(name.to_owned())),
-        };
-
-        let regex = match Regex::new(&pattern) {
-            Ok(pattern) => pattern,
-            Err(_) => return Err(Error::Regex(pattern)),
-        };
-
-        // All ignored tokens correspond to ϵ symbols.
-        matchers.push((Symbol::Null.id(), Matcher::Regex(regex)));
+    // All ignored tokens correspond to ϵ symbols.
+    for (name, pattern) in &definitions {
+        let matcher = create_matcher(name, pattern)?;
+        matchers.push((Symbol::Null.id(), matcher));
     }
 
     Ok(Grammar::new(
@@ -202,6 +185,38 @@ fn get_symbol(
     });
 
     id
+}
+
+/// Creates a `Matcher` from a specified pattern.
+fn create_matcher(name: &str, pattern: &Value) -> Result<Matcher, Error> {
+    // If the pattern is a single string, create a regex matcher.
+    if let Some(pattern) = pattern.as_str() {
+        let pattern = format!("^{}$", pattern);
+
+        return match Regex::new(&pattern) {
+            Ok(regex) => Ok(Matcher::Regex(regex)),
+            Err(_) => Err(Error::Regex(pattern)),
+        };
+    }
+
+    // If the pattern is an array of strings, create a group matcher.
+    let patterns = match pattern.as_array() {
+        Some(patterns) => patterns,
+        None => return Err(Error::Token(name.to_owned())),
+    };
+
+    let mut group = Vec::new();
+
+    for pattern in patterns {
+        let pattern = match pattern.as_str() {
+            Some(pattern) => pattern.to_owned(),
+            None => return Err(Error::Token(name.to_owned())),
+        };
+
+        group.push(pattern);
+    }
+
+    Ok(Matcher::Group(group))
 }
 
 #[derive(Debug)]
