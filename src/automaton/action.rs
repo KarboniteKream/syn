@@ -13,6 +13,16 @@ pub enum Action {
     Accept(usize),
 }
 
+impl Action {
+    /// Returns `true` if the action is `Accept`.
+    pub fn is_accept(&self) -> bool {
+        match self {
+            Self::Accept(_) => true,
+            _ => false,
+        }
+    }
+}
+
 impl Display for Action {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {

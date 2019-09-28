@@ -50,11 +50,7 @@ pub fn parse_lllr(tokens: &[Token], grammar: &mut Grammar) -> Result<Vec<usize>,
                 // Check if the LR parser can stop.
                 if let Some((rule, tail)) = find_unique_rule(grammar, data, state, &token) {
                     lr_rules.push(rule);
-
-                    let accept_rule = grammar.rules(symbol)[0].id;
-                    if accept_rule != rule {
-                        lr_rules.push(accept_rule);
-                    }
+                    lr_rules.push(grammar.rules(symbol)[0].id);
 
                     stack.pop();
 
@@ -416,12 +412,20 @@ fn find_unique_rule(
     state: usize,
     token: &Token,
 ) -> Option<(usize, Vec<usize>)> {
+    let data_key = (state, token.symbol);
+
+    if let Some(action) = data.action_table.get(&data_key) {
+        if action.is_accept() {
+            return None;
+        }
+    }
+
     if grammar.symbols[token.symbol].is_internal() {
         return None;
     }
 
     // Find the unique item.
-    let mut from = match data.left_table.get(&(state, token.symbol)) {
+    let mut from = match data.left_table.get(&data_key) {
         Some(&item) => (state, item),
         None => return None,
     };
