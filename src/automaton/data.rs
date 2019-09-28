@@ -1,27 +1,33 @@
 use std::collections::HashMap;
 
 use crate::grammar::Grammar;
-use crate::util::{self, AsString, Table};
+use crate::util::{self, AsString};
 
 use super::action::Action;
 use super::item::Item;
 
+/// The `Table` type represents a simplified version of an automaton.
+pub type Table<T> = HashMap<(usize, usize), T>;
+
 /// The `Data` struct contains all automaton data tables.
 pub struct Data {
+    pub start_rule: usize,
+    pub items: HashMap<usize, Item>,
     pub action_table: Table<Action>,
     pub goto_table: Table<usize>,
     pub left_table: Table<usize>,
     pub backtrack_table: Table<(usize, usize)>,
-    pub items: HashMap<usize, Item>,
 }
 
 impl Data {
+    /// Constructs a new data table.
     pub fn new(
+        start_rule: usize,
+        items: &[Item],
         action_table: Table<Action>,
         goto_table: Table<usize>,
         left_table: Table<usize>,
         backtrack_table: Table<(usize, usize)>,
-        items: &[Item],
     ) -> Data {
         let items = backtrack_table
             .iter()
@@ -30,11 +36,12 @@ impl Data {
             .collect();
 
         Data {
+            start_rule,
+            items,
             action_table,
             goto_table,
             left_table,
             backtrack_table,
-            items,
         }
     }
 }

@@ -74,7 +74,7 @@ fn main() {
         process::exit(1);
     }
 
-    for rule in rules.unwrap() {
+    for rule in rules.unwrap().into_iter().skip(1) {
         let rule = grammar.rule(rule);
         println!("{}", rule.string(&grammar));
     }

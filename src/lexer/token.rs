@@ -13,6 +13,7 @@ pub struct Token {
 }
 
 impl Token {
+    /// Constructs a new token.
     pub fn new(symbol: usize, lexeme: String, span: Span) -> Token {
         Token {
             symbol,
@@ -21,6 +22,7 @@ impl Token {
         }
     }
 
+    /// Constructs a token representing the $ symbol.
     pub fn end() -> Token {
         Token {
             symbol: Symbol::End.id(),
@@ -29,6 +31,7 @@ impl Token {
         }
     }
 
+    /// Constructs a token representing the ϵ symbol.
     pub fn null() -> Token {
         Token {
             symbol: Symbol::Null.id(),

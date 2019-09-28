@@ -5,7 +5,7 @@ use std::fmt::{self, Display, Formatter};
 use indexmap::IndexSet;
 
 use crate::grammar::{Grammar, Symbol};
-use crate::util::{self, AsString, Table};
+use crate::util::{self, AsString};
 
 mod action;
 mod data;
@@ -14,7 +14,7 @@ mod state;
 mod transition;
 
 pub use action::Action;
-pub use data::Data;
+pub use data::{Data, Table};
 
 use item::Item;
 use state::State;
@@ -22,8 +22,8 @@ use transition::{ItemTransition, StateTransition};
 
 /// The `Automaton` struct describes the automaton for a grammar.
 pub struct Automaton {
-    pub grammar: Grammar,
-    initial_rule: usize,
+    grammar: Grammar,
+    start_rule: usize,
     states: Vec<State>,
     state_transitions: Vec<StateTransition>,
     items: Vec<Item>,
@@ -31,6 +31,7 @@ pub struct Automaton {
 }
 
 impl Automaton {
+    /// Constructs a new automaton.
     pub fn new(grammar: &Grammar, rule: usize) -> Automaton {
         let mut queue = VecDeque::new();
 
@@ -40,10 +41,10 @@ impl Automaton {
         let mut item_transitions = HashSet::new();
 
         // Construct the initial state.
-        let initial_rule = grammar.rule(rule);
+        let start_rule = grammar.rule(rule);
 
-        for &lookahead in &initial_rule.follow {
-            items.insert(Item::initial(items.len(), initial_rule, lookahead));
+        for &lookahead in &start_rule.follow {
+            items.insert(Item::initial(items.len(), start_rule, lookahead));
         }
 
         let initial_state = State::new(0, (0..items.len()).collect());
@@ -96,7 +97,7 @@ impl Automaton {
 
         Automaton {
             grammar: grammar.clone(),
-            initial_rule: initial_rule.id,
+            start_rule: start_rule.id,
             states: util::to_sorted_vec(states),
             state_transitions: util::to_sorted_vec(state_transitions),
             items: util::to_sorted_vec(items),
@@ -104,18 +105,22 @@ impl Automaton {
         }
     }
 
+    /// Returns `true` if the ACTION table, and therefore the automaton, is valid.
     pub fn is_valid(&self) -> bool {
         self.action_table().is_ok()
     }
 
     /// Returns all automaton data tables.
     pub fn data(&self) -> Result<Data, Error> {
+        let action_table = self.action_table()?;
+
         Ok(Data::new(
-            self.action_table()?,
+            self.start_rule,
+            &self.items,
+            action_table,
             self.goto_table(),
             self.left_table(),
             self.backtrack_table(),
-            &self.items,
         ))
     }
 
@@ -216,10 +221,10 @@ impl Automaton {
                 let item = self.items[id];
 
                 // Accept actions have a higher precedence.
-                let (symbol, action) = if item.can_accept(self.initial_rule) {
+                let (symbol, action) = if item.can_accept(self.start_rule) {
                     let symbol = item.head.unwrap_or(item.lookahead);
                     (symbol, Action::Accept(item.rule))
-                } else if item.can_reduce(self.initial_rule) {
+                } else if item.can_reduce(self.start_rule) {
                     (item.lookahead, Action::Reduce(item.rule))
                 } else {
                     continue;

@@ -106,4 +106,5 @@ impl Display for Error {
         }
     }
 }
+
 impl error::Error for Error {}

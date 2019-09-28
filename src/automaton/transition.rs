@@ -10,6 +10,7 @@ pub struct Transition<T> {
 }
 
 impl<T> Transition<T> {
+    /// Constructs a new state or item transition.
     pub fn new(from: T, to: T, symbol: usize) -> Transition<T> {
         Transition { from, to, symbol }
     }

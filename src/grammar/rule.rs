@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 
-use crate::grammar::{Grammar, Symbol};
+use crate::grammar::{Grammar, Position, Symbol};
 use crate::util::AsString;
 
 /// The `Rule` struct describes a grammar rule.
@@ -18,6 +18,7 @@ pub struct Rule {
 }
 
 impl Rule {
+    /// Constructs a new grammar rule.
     pub fn new(id: usize, head: usize, body: Vec<usize>, follow: Vec<usize>) -> Rule {
         Rule {
             id,
@@ -36,9 +37,19 @@ impl Rule {
             .collect()
     }
 
-    /// Returns the tail at the specified index.
+    /// Returns the tail from the specified index.
     pub fn tail(&self, idx: usize) -> &[usize] {
         &self.body[idx..]
+    }
+
+    /// Returns the symbol positions from the specified index.
+    pub fn positions(&self, idx: usize) -> Vec<(usize, Position)> {
+        self.body
+            .iter()
+            .enumerate()
+            .skip(idx)
+            .map(|(idx, &symbol)| (symbol, (self.id, idx)))
+            .collect()
     }
 }
 

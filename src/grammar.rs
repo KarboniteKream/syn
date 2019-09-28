@@ -15,6 +15,9 @@ pub use reader::read_file;
 pub use rule::Rule;
 pub use symbol::Symbol;
 
+/// The `Position` type represents a symbol position in the grammar.
+pub type Position = (usize, usize);
+
 /// The `Grammar` struct describes a grammar to parse the input file with.
 #[derive(Clone, Debug)]
 pub struct Grammar {
@@ -31,6 +34,7 @@ pub struct Grammar {
 }
 
 impl Grammar {
+    /// Constructs a new grammar.
     pub fn new(
         name: String,
         description: String,
@@ -316,16 +320,12 @@ impl Grammar {
     /// Wraps a sequence of symbols in a new rule and returns its ID.
     pub fn wrap_symbols(&mut self, symbols: &[usize], follow: &[usize]) -> usize {
         let head = self.symbol(symbols[0]);
+        let mut name = head.name() + "'";
 
         let mut body = vec![Symbol::End.id()];
         body.extend_from_slice(symbols);
 
-        let id = head.id();
-        let mut name = head.name();
-
         loop {
-            name += "'";
-
             // Check if the new symbol already exists.
             let rules = self
                 .symbols
@@ -347,6 +347,8 @@ impl Grammar {
             if let Some(rule) = rule {
                 return rule.id;
             }
+
+            name += "'";
         }
 
         // Create the wrapper symbol and rule.
@@ -359,17 +361,6 @@ impl Grammar {
         self.symbols.push(symbol);
         self.rules.push(rule);
         self.symbol_rules.insert(symbol_id, vec![rule_id]);
-
-        // Copy FIRST and FOLLOW sets.
-        let mut first = self.first.borrow_mut();
-        if let Some(set) = first.get(&id).cloned() {
-            first.insert(symbol_id, set);
-        }
-
-        let mut follow = self.follow.borrow_mut();
-        if let Some(set) = follow.get(&id).cloned() {
-            follow.insert(symbol_id, set);
-        }
 
         rule_id
     }

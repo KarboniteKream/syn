@@ -22,6 +22,7 @@ pub struct State {
 }
 
 impl State {
+    /// Constructs a new automaton state.
     pub fn new(id: usize, items: Vec<usize>) -> State {
         State { id, items }
     }
@@ -123,7 +124,7 @@ impl State {
                         transition.to.1 = existing.id;
                         transitions.insert(transition);
 
-                        verify_unique(
+                        update_uniqueness(
                             existing.id,
                             (state_id, item.id),
                             &mut next_items,
@@ -189,6 +190,7 @@ impl State {
         Some((State::new(state_id, next_items), transitions))
     }
 
+    /// Different implementation of the `AsString` trait.
     pub fn string(&self, automaton: &Automaton) -> String {
         let items = self
             .items
@@ -206,7 +208,8 @@ impl State {
     }
 }
 
-fn verify_unique(
+/// Updates the item uniqueness if necessary.
+fn update_uniqueness(
     id: usize,
     from: (usize, usize),
     items: &mut Vec<Item>,

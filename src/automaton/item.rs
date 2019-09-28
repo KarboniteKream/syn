@@ -25,6 +25,7 @@ pub struct Item {
 }
 
 impl Item {
+    /// Constructs the initial item.
     pub fn initial(id: usize, rule: &Rule, lookahead: usize) -> Item {
         Item {
             id,
@@ -36,6 +37,7 @@ impl Item {
         }
     }
 
+    /// Constructs a new item.
     pub fn new(id: usize, rule: &Rule, lookahead: usize, unique: bool) -> Item {
         let mut dot = 0;
 

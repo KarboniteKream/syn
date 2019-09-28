@@ -9,6 +9,7 @@ pub struct Span {
 }
 
 impl Span {
+    /// Constructs a new token span.
     pub fn new(position: (usize, usize)) -> Span {
         Span {
             start: position,
