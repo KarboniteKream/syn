@@ -10,7 +10,9 @@ use super::item::Item;
 pub type Table<T> = HashMap<(usize, usize), T>;
 
 /// The `Data` struct contains all automaton data tables.
+#[derive(Clone)]
 pub struct Data {
+    pub grammar: Grammar,
     pub start_rule: usize,
     pub items: HashMap<usize, Item>,
     pub action_table: Table<Action>,
@@ -22,6 +24,7 @@ pub struct Data {
 impl Data {
     /// Constructs a new data table.
     pub fn new(
+        grammar: &Grammar,
         start_rule: usize,
         items: &[Item],
         action_table: Table<Action>,
@@ -36,6 +39,7 @@ impl Data {
             .collect();
 
         Data {
+            grammar: grammar.clone(),
             start_rule,
             items,
             action_table,

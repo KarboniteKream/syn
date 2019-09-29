@@ -35,6 +35,8 @@ pub fn parse_lllr(tokens: &[Token], grammar: &mut Grammar) -> Result<Vec<usize>,
 
         // Start the LR parser if necessary.
         if let Some(data) = tables.get(&position) {
+            let grammar = &data.grammar;
+
             let mut lr_rules = Vec::new();
             let mut lr_stack = vec![(symbol, 0)];
             input.push_front(Token::end());
@@ -308,26 +310,25 @@ fn get_lllr_tables(
 
                     let mut symbols = Vec::new();
                     let mut tail = rule.tail(idx).to_vec();
-                    let mut follow = Vec::new();
 
                     // Find a wrapper with a valid LR automaton.
-                    let is_valid = loop {
+                    let data = loop {
                         if tail.is_empty() {
-                            break false;
+                            break None;
                         }
 
                         symbols.push(tail.remove(0));
-                        follow = grammar.first_follow(&tail, rule.head);
+                        let follow = grammar.first_follow(&tail, rule.head);
 
                         let mut grammar = grammar.clone();
                         let rule = grammar.wrap_symbols(&symbols, &follow);
 
-                        if Automaton::new(&grammar, rule).is_valid() {
-                            break true;
+                        if let Ok(data) = Automaton::new(&grammar, rule).data() {
+                            break Some(data);
                         }
                     };
 
-                    if !is_valid {
+                    if data.is_none() {
                         if all_conflicts.insert(rule.head) {
                             new_conflicts.insert(rule.head);
                         }
@@ -338,7 +339,7 @@ fn get_lllr_tables(
                         break;
                     }
 
-                    let wrapper = ((rule.id, idx), symbols.clone(), follow);
+                    let wrapper = ((rule.id, idx), data.unwrap());
                     idx += symbols.len();
 
                     wrappers
@@ -358,14 +359,11 @@ fn get_lllr_tables(
         Err(_) => return Err(Error::Internal),
     };
 
-    // Construct embedded automata for conflicting symbols.
+    // Construct embedded LR tables for conflicting symbols.
     let tables: HashMap<Position, Data> = wrappers
         .values()
         .flat_map(identity)
-        .map(|(position, symbols, follow)| {
-            let wrapper = grammar.wrap_symbols(&symbols, &follow);
-            (*position, Automaton::new(&grammar, wrapper).data().unwrap())
-        })
+        .map(|(position, data)| (*position, data.clone()))
         .collect();
 
     Ok((parse_table, tables))

@@ -105,16 +105,12 @@ impl Automaton {
         }
     }
 
-    /// Returns `true` if the ACTION table, and therefore the automaton, is valid.
-    pub fn is_valid(&self) -> bool {
-        self.action_table().is_ok()
-    }
-
     /// Returns all automaton data tables.
     pub fn data(&self) -> Result<Data, Error> {
         let action_table = self.action_table()?;
 
         Ok(Data::new(
+            &self.grammar,
             self.start_rule,
             &self.items,
             action_table,
