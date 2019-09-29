@@ -226,13 +226,24 @@ impl Automaton {
                     continue;
                 };
 
+                let key = (state.id, symbol);
+
                 // Every symbol in each state can only correspond to a single action.
-                if action_table.contains_key(&(state.id, symbol)) {
+                if action_table.contains_key(&key) {
+                    // Resolve conflicts if the grammar has specified an override.
+                    if let Some(preference) = self.grammar.actions.get(&symbol) {
+                        if preference.is_reduce() {
+                            action_table.insert(key, action);
+                        }
+
+                        continue;
+                    }
+
                     let symbol = self.grammar.symbol(symbol).clone();
                     return Err(Error::ActionConflict(state.id, symbol));
                 }
 
-                action_table.insert((state.id, symbol), action);
+                action_table.insert(key, action);
             }
         }
 

@@ -402,3 +402,9 @@ function_definition = [
     "declarator declaration_list compound_statement",
     "declarator compound_statement",
 ]
+
+[ignore]
+whitespace = "[ \t\r\n]*"
+
+[actions]
+ELSE = "shift"

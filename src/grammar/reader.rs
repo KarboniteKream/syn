@@ -7,6 +7,7 @@ use std::path::Path;
 use regex::{self, Regex};
 use toml::{map::Map, Value};
 
+use crate::automaton::Action;
 use crate::grammar::{Grammar, Matcher};
 
 use super::rule::Rule;
@@ -124,9 +125,10 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
         };
 
         // Replace the existing regular expression.
-        if let Some(idx) = matchers.iter().position(|&(id, _)| id == symbol) {
-            matchers.remove(idx);
-        }
+        match matchers.iter().position(|&(id, _)| id == symbol) {
+            Some(idx) => matchers.remove(idx),
+            None => continue,
+        };
 
         let matcher = create_matcher(name, pattern)?;
         matchers.push((symbol, matcher));
@@ -142,13 +144,40 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
         matchers.push((Symbol::Null.id(), matcher));
     }
 
+    let mut actions = HashMap::new();
+
+    let definitions = from_table(data, "actions", &Value::as_table)
+        .map(Map::clone)
+        .unwrap_or_default();
+
+    for (name, action) in &definitions {
+        let symbol = match names.get(name) {
+            Some(&symbol) => symbol,
+            None => continue,
+        };
+
+        let action = match action.as_str() {
+            Some(action) => action,
+            None => return Err(Error::Action(name.to_owned())),
+        };
+
+        let action = match action {
+            "shift" => Action::Shift(0),
+            "reduce" => Action::Reduce(0),
+            _ => return Err(Error::Action(name.to_owned())),
+        };
+
+        actions.insert(symbol, action);
+    }
+
     Ok(Grammar::new(
         name,
         description,
         symbols,
         matchers,
-        rules,
         start_symbol,
+        rules,
+        actions,
     ))
 }
 
@@ -222,6 +251,7 @@ fn create_matcher(name: &str, pattern: &Value) -> Result<Matcher, Error> {
 
 #[derive(Debug)]
 pub enum Error {
+    Action(String),
     File(String),
     Key(String),
     Regex(String),
@@ -232,6 +262,7 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
+            Self::Action(name) => write!(f, "Cannot parse action for {}", name),
             Self::File(error) => write!(f, "Cannot read file {}", error),
             Self::Key(name) => write!(f, "Cannot parse key '{}'", name),
             Self::Regex(pattern) => write!(f, "Cannot parse expression /{}/", pattern),

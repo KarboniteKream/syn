@@ -87,6 +87,16 @@ whitespace = "[ \t\r\n]*"
 comment = "#.*(\n|$)"
 ```
 
+### Actions
+The `[actions]` table specifies which action to prefer when a Shift/Reduce conflict occurs. This
+avoids issues like the *dangling else*. Allowed values are `shift` and `reduce`.
+
+Example:
+```toml
+[actions]
+a = "shift"
+```
+
 [LLLR]: https://www.semanticscholar.org/paper/LLLR-Parsing%3A-a-Combination-of-LL-and-LR-Parsing-Slivnik/fac55d573ec8441673022e36f441ca278fc4a717
 [DOT]: https://www.graphviz.org/doc/info/lang.html
 [TOML]: https://github.com/toml-lang/toml

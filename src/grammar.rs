@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::error;
 use std::fmt::{self, Display, Formatter};
 
+use crate::automaton::Action;
 use crate::util;
 
 mod matcher;
@@ -27,6 +28,7 @@ pub struct Grammar {
     matchers: Vec<(usize, Matcher)>,
     start_symbol: usize,
     pub rules: Vec<Rule>,
+    pub actions: HashMap<usize, Action>,
     // List of rules for a specific symbol.
     symbol_rules: HashMap<usize, Vec<usize>>,
     first: RefCell<HashMap<usize, Vec<usize>>>,
@@ -40,8 +42,9 @@ impl Grammar {
         description: String,
         symbols: Vec<Symbol>,
         matchers: Vec<(usize, Matcher)>,
-        rules: Vec<Rule>,
         start_symbol: usize,
+        rules: Vec<Rule>,
+        actions: HashMap<usize, Action>,
     ) -> Grammar {
         let symbol_rules = rules
             .iter()
@@ -58,6 +61,7 @@ impl Grammar {
             matchers,
             start_symbol,
             rules,
+            actions,
             symbol_rules,
             first: RefCell::new(HashMap::new()),
             follow: RefCell::new(HashMap::new()),
