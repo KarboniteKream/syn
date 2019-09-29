@@ -136,7 +136,7 @@ log_constant = [
 ]
 
 int_constant = "[0-9]+"
-str_constant = "'([ -&\\(-~]|'')*('|$)"
+str_constant = "'(\\\\.|[^'])*('|$)"
 identifier = "[A-Za-z_]+[A-Za-z0-9_]*"
 
 [ignore]

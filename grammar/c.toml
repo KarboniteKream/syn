@@ -1,12 +1,12 @@
 name = "c"
-description = "ANSI C"
+description = "The C Programming Language"
 start_symbol = "translation_unit"
 
 [rules]
 primary_expression = [
-    "IDENTIFIER",
-    "CONSTANT",
-    "STRING_LITERAL",
+    "identifier",
+    "constant",
+    "string_literal",
     "( expression )",
 ]
 
@@ -15,10 +15,10 @@ postfix_expression = [
     "postfix_expression [ expression ]",
     "postfix_expression ( )",
     "postfix_expression ( argument_expression_list )",
-    "postfix_expression . IDENTIFIER",
-    "postfix_expression PTR_OP IDENTIFIER",
-    "postfix_expression INC_OP",
-    "postfix_expression DEC_OP",
+    "postfix_expression . identifier",
+    "postfix_expression -> identifier",
+    "postfix_expression ++",
+    "postfix_expression --",
 ]
 
 argument_expression_list = [
@@ -28,11 +28,11 @@ argument_expression_list = [
 
 unary_expression = [
     "postfix_expression",
-    "INC_OP unary_expression",
-    "DEC_OP unary_expression",
+    "++ unary_expression",
+    "-- unary_expression",
     "unary_operator cast_expression",
-    "SIZEOF unary_expression",
-    "SIZEOF ( type_name )",
+    "sizeof unary_expression",
+    "sizeof ( type_name )",
 ]
 
 unary_operator = [
@@ -64,22 +64,22 @@ additive_expression = [
 
 shift_expression = [
     "additive_expression",
-    "shift_expression LEFT_OP additive_expression",
-    "shift_expression RIGHT_OP additive_expression",
+    "shift_expression << additive_expression",
+    "shift_expression >> additive_expression",
 ]
 
 relational_expression = [
     "shift_expression",
     "relational_expression < shift_expression",
     "relational_expression > shift_expression",
-    "relational_expression LE_OP shift_expression",
-    "relational_expression GE_OP shift_expression",
+    "relational_expression <= shift_expression",
+    "relational_expression >= shift_expression",
 ]
 
 equality_expression = [
     "relational_expression",
-    "equality_expression EQ_OP relational_expression",
-    "equality_expression NE_OP relational_expression",
+    "equality_expression == relational_expression",
+    "equality_expression != relational_expression",
 ]
 
 and_expression = [
@@ -99,12 +99,12 @@ inclusive_or_expression = [
 
 logical_and_expression = [
     "inclusive_or_expression",
-    "logical_and_expression AND_OP inclusive_or_expression",
+    "logical_and_expression && inclusive_or_expression",
 ]
 
 logical_or_expression = [
     "logical_and_expression",
-    "logical_or_expression OR_OP logical_and_expression",
+    "logical_or_expression || logical_and_expression",
 ]
 
 conditional_expression = [
@@ -119,16 +119,16 @@ assignment_expression = [
 
 assignment_operator = [
     "=",
-    "MUL_ASSIGN",
-    "DIV_ASSIGN",
-    "MOD_ASSIGN",
-    "ADD_ASSIGN",
-    "SUB_ASSIGN",
-    "LEFT_ASSIGN",
-    "RIGHT_ASSIGN",
-    "AND_ASSIGN",
-    "XOR_ASSIGN",
-    "OR_ASSIGN",
+    "+=",
+    "-=",
+    "*=",
+    "/=",
+    "%=",
+    "<<=",
+    ">>=",
+    "&=",
+    "|=",
+    "^=",
 ]
 
 expression = [
@@ -165,37 +165,37 @@ init_declarator = [
 ]
 
 storage_class_specifier = [
-    "TYPEDEF",
-    "EXTERN",
-    "STATIC",
-    "AUTO",
-    "REGISTER",
+    "typedef",
+    "extern",
+    "static",
+    "auto",
+    "register",
 ]
 
 type_specifier = [
-    "VOID",
-    "CHAR",
-    "SHORT",
-    "INT",
-    "LONG",
-    "FLOAT",
-    "DOUBLE",
-    "SIGNED",
-    "UNSIGNED",
+    "void",
+    "char",
+    "short",
+    "int",
+    "long",
+    "float",
+    "double",
+    "signed",
+    "unsigned",
     "struct_or_union_specifier",
     "enum_specifier",
-    "TYPE_NAME",
+    "type_identifier",
 ]
 
 struct_or_union_specifier = [
-    "struct_or_union IDENTIFIER { struct_declaration_list }",
+    "struct_or_union identifier { struct_declaration_list }",
     "struct_or_union { struct_declaration_list }",
-    "struct_or_union IDENTIFIER",
+    "struct_or_union identifier",
 ]
 
 struct_or_union = [
-    "STRUCT",
-    "UNION",
+    "struct",
+    "union",
 ]
 
 struct_declaration_list = [
@@ -226,9 +226,9 @@ struct_declarator = [
 ]
 
 enum_specifier = [
-    "ENUM { enumerator_list }",
-    "ENUM IDENTIFIER { enumerator_list }",
-    "ENUM IDENTIFIER",
+    "enum { enumerator_list }",
+    "enum identifier { enumerator_list }",
+    "enum identifier",
 ]
 
 enumerator_list = [
@@ -237,13 +237,13 @@ enumerator_list = [
 ]
 
 enumerator = [
-    "IDENTIFIER",
-    "IDENTIFIER = constant_expression",
+    "identifier",
+    "identifier = constant_expression",
 ]
 
 type_qualifier = [
-    "CONST",
-    "VOLATILE",
+    "const",
+    "volatile",
 ]
 
 declarator = [
@@ -252,7 +252,7 @@ declarator = [
 ]
 
 direct_declarator = [
-    "IDENTIFIER",
+    "identifier",
     "( declarator )",
     "direct_declarator [ constant_expression ]",
     "direct_declarator [ ]",
@@ -275,7 +275,7 @@ type_qualifier_list = [
 
 parameter_type_list = [
     "parameter_list",
-    "parameter_list , ELLIPSIS",
+    "parameter_list , ...",
 ]
 
 parameter_list = [
@@ -290,8 +290,8 @@ parameter_declaration = [
 ]
 
 identifier_list = [
-    "IDENTIFIER",
-    "identifier_list , IDENTIFIER",
+    "identifier",
+    "identifier_list , identifier",
 ]
 
 type_name = [
@@ -338,9 +338,9 @@ statement = [
 ]
 
 labeled_statement = [
-    "IDENTIFIER : statement",
-    "CASE constant_expression : statement",
-    "DEFAULT : statement",
+    "identifier : statement",
+    "case constant_expression : statement",
+    "default : statement",
 ]
 
 compound_statement = [
@@ -366,24 +366,24 @@ expression_statement = [
 ]
 
 selection_statement = [
-    "IF ( expression ) statement",
-    "IF ( expression ) statement ELSE statement",
-    "SWITCH ( expression ) statement",
+    "if ( expression ) statement",
+    "if ( expression ) statement else statement",
+    "switch ( expression ) statement",
 ]
 
 iteration_statement = [
-    "WHILE ( expression ) statement",
-    "DO statement WHILE ( expression ) ;",
-    "FOR ( expression_statement expression_statement ) statement",
-    "FOR ( expression_statement expression_statement expression ) statement",
+    "while ( expression ) statement",
+    "do statement while ( expression ) ;",
+    "for ( expression_statement expression_statement ) statement",
+    "for ( expression_statement expression_statement expression ) statement",
 ]
 
 jump_statement = [
-    "GOTO IDENTIFIER ;",
-    "CONTINUE ;",
-    "BREAK ;",
-    "RETURN ;",
-    "RETURN expression ;",
+    "goto identifier ;",
+    "continue ;",
+    "break ;",
+    "return ;",
+    "return expression ;",
 ]
 
 translation_unit = [
@@ -403,8 +403,15 @@ function_definition = [
     "declarator compound_statement",
 ]
 
+[tokens]
+constant = "[0-9]+"
+string_literal = "\"(\\\\.|[^\"])*(\"|$)"
+identifier = "[A-Za-z_]+[A-Za-z0-9_]*"
+type_identifier = "[A-Za-z_]+[A-Za-z0-9_]*"
+
 [ignore]
 whitespace = "[ \t\r\n]*"
+comment = "/(/|$).*(\n|$)"
 
 [actions]
-ELSE = "shift"
+else = "shift"
