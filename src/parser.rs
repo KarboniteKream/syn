@@ -320,6 +320,11 @@ fn get_lllr_tables(
                         symbols.push(tail.remove(0));
                         let follow = grammar.first_follow(&tail, rule.head);
 
+                        if follow.is_empty() {
+                            let symbol = grammar.symbol(symbol);
+                            return Err(Error::Symbol(symbol.clone()));
+                        }
+
                         let mut grammar = grammar.clone();
                         let rule = grammar.wrap_symbols(&symbols, &follow);
 
@@ -333,8 +338,7 @@ fn get_lllr_tables(
                             new_conflicts.insert(rule.head);
                         }
 
-                        // If the rule itself is conflicting,
-                        // its wrappers are unnecessary.
+                        // Remove existing wrappers for the conflicting rule.
                         wrappers.remove(&rule.head);
                         break;
                     }
@@ -457,6 +461,7 @@ pub enum Error {
     EOF,
     Internal,
     Parse(Token),
+    Symbol(Symbol),
 }
 
 impl Display for Error {
@@ -466,6 +471,7 @@ impl Display for Error {
             Self::EOF => write!(f, "Unexpected end of file"),
             Self::Internal => write!(f, "Internal error"),
             Self::Parse(token) => write!(f, "Unexpected token {}", token),
+            Self::Symbol(symbol) => write!(f, "Cannot parse symbol {}", symbol),
         }
     }
 }

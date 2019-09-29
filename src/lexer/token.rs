@@ -48,6 +48,6 @@ impl Token {
 
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "\"{}\" @ {} [{}]", self.lexeme, self.span, self.symbol)
+        write!(f, "{} @ {} [{}]", self.lexeme, self.span, self.symbol)
     }
 }

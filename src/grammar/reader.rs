@@ -124,8 +124,9 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
         };
 
         // Replace the existing regular expression.
-        let idx = matchers.iter().position(|&(id, _)| id == symbol).unwrap();
-        matchers.remove(idx);
+        if let Some(idx) = matchers.iter().position(|&(id, _)| id == symbol) {
+            matchers.remove(idx);
+        }
 
         let matcher = create_matcher(name, pattern)?;
         matchers.push((symbol, matcher));
