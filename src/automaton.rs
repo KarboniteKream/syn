@@ -300,6 +300,7 @@ impl Automaton {
     fn backtrack_table(&self) -> Table<(usize, usize)> {
         self.item_transitions
             .iter()
+            .rev()
             .filter(|transition| self.items[transition.to.1].unique)
             .map(|transition| (transition.to, transition.from))
             .collect()
