@@ -1,9 +1,8 @@
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::convert::identity;
 use std::error;
 use std::fmt::{self, Display, Formatter};
 
-use crate::automaton::{Action, Automaton, Data, Table};
+use crate::automaton::{Action, Automaton, Data, Item, Table};
 use crate::grammar::{Grammar, Position, Symbol};
 use crate::lexer::Token;
 use crate::util;
@@ -37,7 +36,7 @@ pub fn parse_lllr(tokens: &[Token], grammar: &mut Grammar) -> Result<Vec<usize>,
         if let Some(data) = tables.get(&position) {
             let grammar = &data.grammar;
 
-            let mut lr_rules = Vec::new();
+            let mut lr_rules = vec![Vec::new()];
             let mut lr_stack = vec![(symbol, 0)];
             input.push_front(Token::end());
 
@@ -50,8 +49,12 @@ pub fn parse_lllr(tokens: &[Token], grammar: &mut Grammar) -> Result<Vec<usize>,
                 let token = input.front().cloned().unwrap_or_else(Token::null);
 
                 // Check if the LR parser can stop.
-                if let Some((rule, tail)) = find_unique_rule(grammar, data, state, &token) {
-                    lr_rules.push(rule);
+                if let Some((item, tail)) = find_unique_item(grammar, data, state, &token) {
+                    reduce_rules(&mut lr_rules, item.dot);
+                    lr_rules.last_mut().unwrap().insert(0, item.rule);
+
+                    let count = lr_rules.len() - 1;
+                    reduce_rules(&mut lr_rules, count);
 
                     // Replace embedded parser symbols on the LL stack.
                     let body = grammar.rule(data.start_rule).tail(1);
@@ -69,12 +72,15 @@ pub fn parse_lllr(tokens: &[Token], grammar: &mut Grammar) -> Result<Vec<usize>,
                 match action {
                     Action::Shift(state) => {
                         lr_stack.push((token.symbol, *state));
+                        lr_rules.push(Vec::new());
                         input.pop_front();
                     }
                     Action::Reduce(rule) => {
                         let rule = grammar.rule(*rule);
-                        reduce_rule(&mut lr_stack, &rule.body)?;
-                        lr_rules.push(rule.id);
+                        reduce_stack(&mut lr_stack, &rule.body)?;
+                        reduce_rules(&mut lr_rules, rule.body.len());
+                        lr_rules.last_mut().unwrap().insert(0, rule.id);
+                        lr_rules.push(Vec::new());
 
                         let state = lr_stack.last().unwrap().1;
                         let next_state = match data.goto_table.get(&(state, rule.head)) {
@@ -86,7 +92,8 @@ pub fn parse_lllr(tokens: &[Token], grammar: &mut Grammar) -> Result<Vec<usize>,
                     }
                     Action::Accept(rule) => {
                         let body = grammar.rule(*rule).tail(1);
-                        reduce_rule(&mut lr_stack, body)?;
+                        reduce_stack(&mut lr_stack, body)?;
+                        reduce_rules(&mut lr_rules, body.len());
                         stack.truncate(stack.len() - body.len());
 
                         break true;
@@ -101,9 +108,7 @@ pub fn parse_lllr(tokens: &[Token], grammar: &mut Grammar) -> Result<Vec<usize>,
                 };
             }
 
-            lr_rules.reverse();
-            rules.extend(lr_rules);
-
+            rules.extend(lr_rules.last().unwrap());
             continue;
         }
 
@@ -202,7 +207,7 @@ pub fn parse_lr(tokens: &[Token], grammar: &Grammar, data: &Data) -> Result<Vec<
             }
             Action::Reduce(rule) => {
                 let rule = grammar.rule(*rule);
-                reduce_rule(&mut stack, &rule.body)?;
+                reduce_stack(&mut stack, &rule.body)?;
                 rules.push(rule.id);
 
                 let state = stack.last().unwrap().1;
@@ -218,7 +223,7 @@ pub fn parse_lr(tokens: &[Token], grammar: &Grammar, data: &Data) -> Result<Vec<
                 let mut body = rule.body.clone();
                 body.insert(0, rule.head);
 
-                reduce_rule(&mut stack, &body)?;
+                reduce_stack(&mut stack, &body)?;
                 rules.push(rule.id);
 
                 break true;
@@ -366,7 +371,7 @@ fn get_lllr_tables(
     // Construct embedded LR tables for conflicting symbols.
     let tables: HashMap<Position, Data> = wrappers
         .values()
-        .flat_map(identity)
+        .flatten()
         .map(|(position, data)| (*position, data.clone()))
         .collect();
 
@@ -374,16 +379,16 @@ fn get_lllr_tables(
 }
 
 /// Finds a unique item in the current automaton state.
-/// Returns the rule the item represents and the remaining symbols in the automaton.
-fn find_unique_rule(
+/// Returns the item and the remaining symbols in the automaton.
+fn find_unique_item(
     grammar: &Grammar,
     data: &Data,
     state: usize,
     token: &Token,
-) -> Option<(usize, Vec<(usize, Position)>)> {
-    let data_key = (state, token.symbol);
+) -> Option<(Item, Vec<(usize, Position)>)> {
+    let key = (state, token.symbol);
 
-    if let Some(action) = data.action_table.get(&data_key) {
+    if let Some(action) = data.action_table.get(&key) {
         if action.is_accept() {
             return None;
         }
@@ -394,7 +399,7 @@ fn find_unique_rule(
     }
 
     // Find the unique item.
-    let mut from = match data.left_table.get(&data_key) {
+    let mut from = match data.left_table.get(&key) {
         Some(&item) => (state, item),
         None => return None,
     };
@@ -420,7 +425,7 @@ fn find_unique_rule(
         }
     }
 
-    Some((rule.id, tail))
+    Some((item, tail))
 }
 
 /// Converts tokens to a parser input.
@@ -441,7 +446,7 @@ fn next_token(input: &mut VecDeque<Token>, symbols: &[Symbol]) -> Option<Token> 
 }
 
 /// Removes the rule symbols from the stack.
-fn reduce_rule(stack: &mut Vec<(usize, usize)>, symbols: &[usize]) -> Result<(), Error> {
+fn reduce_stack(stack: &mut Vec<(usize, usize)>, symbols: &[usize]) -> Result<(), Error> {
     for &id in symbols.iter().rev() {
         if id == Symbol::Null.id() {
             continue;
@@ -453,6 +458,18 @@ fn reduce_rule(stack: &mut Vec<(usize, usize)>, symbols: &[usize]) -> Result<(),
     }
 
     Ok(())
+}
+
+/// Merges the left-parse rules.
+fn reduce_rules(rules: &mut Vec<Vec<usize>>, count: usize) {
+    let mut buffer = Vec::new();
+
+    for _ in 0..count {
+        let rules = rules.pop().unwrap();
+        buffer = [rules, buffer].concat();
+    }
+
+    rules.last_mut().unwrap().extend(buffer);
 }
 
 #[derive(Debug)]

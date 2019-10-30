@@ -15,8 +15,7 @@ mod transition;
 
 pub use action::Action;
 pub use data::{Data, Table};
-
-use item::Item;
+pub use item::Item;
 use state::State;
 use transition::{ItemTransition, StateTransition};
 

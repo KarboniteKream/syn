@@ -10,7 +10,7 @@ use super::item::Item;
 pub type Table<T> = HashMap<(usize, usize), T>;
 
 /// The `Data` struct contains all automaton data tables.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Data {
     pub grammar: Grammar,
     pub start_rule: usize,
