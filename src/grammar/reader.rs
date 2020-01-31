@@ -29,12 +29,13 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
     };
 
     let name = from_table(data, "name", &Value::as_str)?.to_owned();
-    let description = from_table(data, "description", &Value::as_str)
-        .map(str::to_owned)
-        .unwrap_or_else(|_| {
+    let description = from_table(data, "description", &Value::as_str).map_or_else(
+        |_| {
             let path = filename.canonicalize().unwrap();
             path.into_os_string().into_string().unwrap()
-        });
+        },
+        str::to_owned,
+    );
 
     let definitions = from_table(data, "rules", &Value::as_table)?;
     // All L-values are considered nonterminal symbols.
