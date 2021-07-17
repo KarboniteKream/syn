@@ -1,12 +1,12 @@
 [package]
 name = "syn"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Klemen Košir <klemen.kosir@kream.io>"]
 license = "MIT"
 edition = "2018"
 
 [dependencies]
-clap = { version = "2.33", default-features = false }
-indexmap = "1.4"
-regex = "1"
-toml = { version = "0.5", features = ["preserve_order"] }
+clap = { version = "2.33.3", default-features = false }
+indexmap = "1.7.0"
+regex = "1.5.4"
+toml = { version = "0.5.8", features = ["preserve_order"] }
