@@ -54,26 +54,17 @@ impl Symbol {
 
     /// Returns `true` if the symbol is terminal.
     pub fn is_terminal(&self) -> bool {
-        match self {
-            Self::NonTerminal(..) => false,
-            _ => true,
-        }
+        !self.is_nonterminal()
     }
 
     /// Returns `true` if the symbol is nonterminal.
     pub fn is_nonterminal(&self) -> bool {
-        match self {
-            Self::NonTerminal(..) => true,
-            _ => false,
-        }
+        matches!(self, Self::NonTerminal(..))
     }
 
     /// Returns `true` if the symbol is internal.
     pub fn is_internal(&self) -> bool {
-        match self {
-            Self::NonTerminal(..) | Self::Terminal(..) => false,
-            _ => true,
-        }
+        !matches!(self, Self::NonTerminal(..) | Self::Terminal(..))
     }
 }
 

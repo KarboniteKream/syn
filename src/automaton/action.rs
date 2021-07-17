@@ -16,18 +16,12 @@ pub enum Action {
 impl Action {
     /// Returns `true` if the action is `Reduce`.
     pub fn is_reduce(&self) -> bool {
-        match self {
-            Self::Reduce(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Reduce(_))
     }
 
     /// Returns `true` if the action is `Accept`.
     pub fn is_accept(&self) -> bool {
-        match self {
-            Self::Accept(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Accept(_))
     }
 }
 

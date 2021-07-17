@@ -1,3 +1,4 @@
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::error;
 use std::fmt::{self, Display, Formatter};
@@ -228,11 +229,11 @@ impl Automaton {
                 let key = (state.id, symbol);
 
                 // Every symbol in each state can only correspond to a single action.
-                if action_table.contains_key(&key) {
+                if let Entry::Occupied(mut entry) = action_table.entry(key) {
                     // Resolve conflicts if the grammar has specified an override.
                     if let Some(preference) = self.grammar.actions.get(&symbol) {
                         if preference.is_reduce() {
-                            action_table.insert(key, action);
+                            entry.insert(action);
                         }
 
                         continue;
