@@ -104,7 +104,7 @@ pub fn parse_lllr(tokens: &[Token], grammar: &mut Grammar) -> Result<Vec<usize>,
             if !is_valid {
                 return match next_token(&mut input, &grammar.symbols) {
                     Some(token) => Err(Error::Parse(token)),
-                    None => Err(Error::EOF),
+                    None => Err(Error::Eof),
                 };
             }
 
@@ -121,7 +121,7 @@ pub fn parse_lllr(tokens: &[Token], grammar: &mut Grammar) -> Result<Vec<usize>,
     }
 
     if !stack.is_empty() {
-        return Err(Error::EOF);
+        return Err(Error::Eof);
     }
 
     if let Some(token) = next_token(&mut input, &grammar.symbols) {
@@ -171,7 +171,7 @@ pub fn parse_ll(tokens: &[Token], grammar: &Grammar) -> Result<Vec<usize>, Error
     }
 
     if !stack.is_empty() {
-        return Err(Error::EOF);
+        return Err(Error::Eof);
     }
 
     if let Some(token) = next_token(&mut input, &grammar.symbols) {
@@ -238,7 +238,7 @@ pub fn parse_lr(tokens: &[Token], grammar: &Grammar, data: &Data) -> Result<Vec<
     if !is_valid {
         return match next_token(&mut input, &grammar.symbols) {
             Some(token) => Err(Error::Parse(token)),
-            None => Err(Error::EOF),
+            None => Err(Error::Eof),
         };
     }
 
@@ -363,7 +363,7 @@ fn get_lllr_tables(
     }
 
     // Construct the LL parse table, ignoring conflicting symbols.
-    let parse_table = match get_ll_table(&grammar, &all_conflicts) {
+    let parse_table = match get_ll_table(grammar, &all_conflicts) {
         Ok(parse_table) => parse_table,
         Err(_) => return Err(Error::Internal),
     };
@@ -475,7 +475,7 @@ fn reduce_rules(rules: &mut Vec<Vec<usize>>, count: usize) {
 #[derive(Debug)]
 pub enum Error {
     Conflict(Symbol),
-    EOF,
+    Eof,
     Internal,
     Parse(Token),
     Symbol(Symbol),
@@ -485,7 +485,7 @@ impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             Self::Conflict(symbol) => write!(f, "Conflict in table for {}", symbol),
-            Self::EOF => write!(f, "Unexpected end of file"),
+            Self::Eof => write!(f, "Unexpected end of file"),
             Self::Internal => write!(f, "Internal error"),
             Self::Parse(token) => write!(f, "Unexpected token {}", token),
             Self::Symbol(symbol) => write!(f, "Cannot parse symbol {}", symbol),

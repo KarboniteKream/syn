@@ -269,7 +269,7 @@ impl Grammar {
                     }
 
                     let to = follow.get_mut(&id).unwrap();
-                    done &= first.difference(&to).count() == 0;
+                    done &= first.difference(to).count() == 0;
                     to.extend(first);
                 }
             }
@@ -310,7 +310,7 @@ impl Grammar {
     /// Returns the FSTFLW set of a sequence of symbols.
     pub fn first_follow(&self, symbols: &[usize], follow: usize) -> Vec<usize> {
         let mut result = HashSet::new();
-        result.extend(self.first_sequence(&symbols));
+        result.extend(self.first_sequence(symbols));
 
         if result.is_empty() || result.remove(&Symbol::Null.id()) {
             for symbol in self.follow(follow) {

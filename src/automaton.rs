@@ -57,7 +57,7 @@ impl Automaton {
             // Derive the next state from the current state
             // using the specified transition symbol.
             let (mut next_state, transitions) = state
-                .derive(symbol, &grammar, &mut items, states.len())
+                .derive(symbol, grammar, &mut items, states.len())
                 .unwrap();
 
             let mut state_transition = StateTransition::new(state.id, next_state.id, symbol);
