@@ -3,7 +3,7 @@ name = "syn"
 version = "0.6.0"
 authors = ["Klemen Košir <klemen.kosir@kream.io>"]
 license = "MIT"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 clap = { version = "4.5.35", default-features = false, features = ["std", "cargo", "error-context", "help", "usage"] }

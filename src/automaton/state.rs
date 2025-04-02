@@ -7,9 +7,9 @@ use indexmap::IndexSet;
 use crate::grammar::{Grammar, Symbol};
 use crate::util::{self, AsString};
 
+use super::Automaton;
 use super::item::Item;
 use super::transition::ItemTransition;
-use super::Automaton;
 
 /// The `State` struct describes a state in the automaton.
 ///

@@ -1,4 +1,4 @@
-use clap::{crate_name, crate_version, Arg, ArgMatches, Command};
+use clap::{Arg, ArgMatches, Command, crate_name, crate_version};
 
 use crate::grammar::Grammar;
 

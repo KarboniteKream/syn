@@ -5,7 +5,7 @@ use std::fs;
 use std::path::Path;
 
 use regex::{self, Regex};
-use toml::{map::Map, Value};
+use toml::{Value, map::Map};
 
 use crate::automaton::Action;
 use crate::grammar::{Grammar, Matcher};

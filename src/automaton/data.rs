@@ -54,7 +54,7 @@ impl AsString for Data {
     fn string(&self, grammar: &Grammar) -> String {
         let action_table = util::to_sorted_vec(&self.action_table)
             .iter()
-            .map(|(&(state, symbol), action)| {
+            .map(|&(&(state, symbol), action)| {
                 format!("{}, {} → {}", state, grammar.symbol(symbol), action)
             })
             .collect::<Vec<String>>()
@@ -62,13 +62,13 @@ impl AsString for Data {
 
         let goto_table = util::to_sorted_vec(&self.goto_table)
             .iter()
-            .map(|(&(from, symbol), to)| format!("{}, {} → {}", from, grammar.symbol(symbol), to))
+            .map(|&(&(from, symbol), to)| format!("{}, {} → {}", from, grammar.symbol(symbol), to))
             .collect::<Vec<String>>()
             .join("\n");
 
         let left_table = util::to_sorted_vec(&self.left_table)
             .iter()
-            .map(|(&(state, symbol), item)| {
+            .map(|&(&(state, symbol), item)| {
                 format!("{}, {} → {}", state, grammar.symbol(symbol), item)
             })
             .collect::<Vec<String>>()
