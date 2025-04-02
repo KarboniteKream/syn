@@ -116,7 +116,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
     }
 
     let definitions = from_table(data, "tokens", &Value::as_table)
-        .map(Map::clone)
+        .cloned()
         .unwrap_or_default();
 
     for (name, pattern) in &definitions {
@@ -136,7 +136,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
     }
 
     let definitions = from_table(data, "ignore", &Value::as_table)
-        .map(Map::clone)
+        .cloned()
         .unwrap_or_default();
 
     // All ignored tokens correspond to ϵ symbols.
@@ -148,7 +148,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
     let mut actions = HashMap::new();
 
     let definitions = from_table(data, "actions", &Value::as_table)
-        .map(Map::clone)
+        .cloned()
         .unwrap_or_default();
 
     for (name, action) in &definitions {
@@ -186,7 +186,7 @@ pub fn read_file(filename: &Path) -> Result<Grammar, Error> {
 fn from_table<'a, T: ?Sized>(
     data: &'a Map<String, Value>,
     key: &str,
-    f: &dyn Fn(&'a Value) -> Option<&T>,
+    f: &dyn Fn(&'a Value) -> Option<&'a T>,
 ) -> Result<&'a T, Error> {
     match data.get(key).and_then(f) {
         Some(value) => Ok(value),

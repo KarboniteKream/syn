@@ -50,7 +50,8 @@ impl Grammar {
             .iter()
             .enumerate()
             .fold(HashMap::new(), |mut acc, (id, rule)| {
-                acc.entry(rule.head).or_insert_with(Vec::new).push(id);
+                let ids: &mut Vec<usize> = acc.entry(rule.head).or_default();
+                ids.push(id);
                 acc
             });
 

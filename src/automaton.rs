@@ -273,14 +273,13 @@ impl Automaton {
                 state.items.iter().fold(HashMap::new(), |mut acc, &id| {
                     let item = self.items[id];
 
-                    // Find the FIRST set of the an item's follow sequence.
+                    // Find the FIRST set of the item's follow sequence.
                     let sequence = item.follow(self.grammar.rule(item.rule));
                     let first = self.grammar.first_sequence(&sequence);
 
                     for symbol in first {
-                        acc.entry((state.id, symbol))
-                            .or_insert_with(Vec::new)
-                            .push(item);
+                        let items: &mut Vec<Item> = acc.entry((state.id, symbol)).or_default();
+                        items.push(item);
                     }
 
                     acc

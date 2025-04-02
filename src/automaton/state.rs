@@ -212,7 +212,7 @@ impl State {
 fn update_uniqueness(
     id: usize,
     from: (usize, usize),
-    items: &mut Vec<Item>,
+    items: &mut [Item],
     transitions: &HashSet<ItemTransition>,
 ) {
     if !items[id].unique {
