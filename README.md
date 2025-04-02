@@ -3,7 +3,7 @@
 A syntax parser based on the [LLLR] method.
 
 ## Requirements
-- Rust 1.56.0 or later
+- Rust 1.85.0 or later
 
 ## Usage
 ```bash
