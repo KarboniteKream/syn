@@ -1,52 +1,42 @@
+---
 name: CI
-on: [push, pull_request]
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
 
 jobs:
   build:
-    name: Build
+    name: "Build"
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-      - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Setup Rust"
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: "Build"
+        run: cargo build
 
   lint:
-    name: Lint
+    name: "Lint"
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          components: rustfmt, clippy
-      - name: Rustfmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
-      - name: Clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
 
-  test:
-    name: Tests
-    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Setup Rust"
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          profile: minimal
-      - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
+          components: rustfmt, clippy
+
+      - name: "Run Rustfmt"
+        run: cargo fmt --all --check
+
+      - name: "Run Clippy"
+        run: cargo clippy -- -D warnings
