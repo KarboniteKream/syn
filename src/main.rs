@@ -14,7 +14,7 @@ use util::AsString;
 fn main() {
     let args = util::parse_args();
 
-    let filename = args.value_of("grammar").unwrap();
+    let filename = args.get_one::<String>("grammar").unwrap();
     let mut grammar = match grammar::read_file(Path::new(filename)) {
         Ok(grammar) => grammar,
         Err(error) => {
@@ -28,7 +28,7 @@ fn main() {
         process::exit(1);
     }
 
-    let filename = args.value_of("input").unwrap();
+    let filename = args.get_one::<String>("input").unwrap();
     let tokens = match lexer::get_tokens(Path::new(filename), &grammar) {
         Ok(tokens) => tokens,
         Err(error) => {
@@ -41,7 +41,7 @@ fn main() {
         process::exit(0);
     }
 
-    let rules = match args.value_of("parser").unwrap() {
+    let rules = match args.get_one::<String>("parser").unwrap().as_str() {
         "ll" => parser::parse_ll(&tokens, &grammar),
         "lr" => {
             let automaton = Automaton::new(&grammar, 0);
@@ -54,7 +54,7 @@ fn main() {
                 }
             };
 
-            if let Some(output) = args.value_of("output") {
+            if let Some(output) = args.get_one::<String>("output") {
                 let contents = automaton.to_dot();
 
                 if let Err(error) = fs::write(Path::new(output), contents) {

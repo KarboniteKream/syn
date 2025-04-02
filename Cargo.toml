@@ -6,7 +6,7 @@ license = "MIT"
 edition = "2021"
 
 [dependencies]
-clap = { version = "2.34.0", default-features = false }
+clap = { version = "4.5.35", default-features = false, features = ["std", "cargo", "error-context", "help", "usage"] }
 indexmap = "2.8.0"
 regex = "1.11.1"
 toml = { version = "0.8.20", features = ["preserve_order"] }

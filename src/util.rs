@@ -1,4 +1,4 @@
-use clap::{crate_authors, crate_name, crate_version, App, Arg, ArgMatches};
+use clap::{crate_name, crate_version, Arg, ArgMatches, Command};
 
 use crate::grammar::Grammar;
 
@@ -15,37 +15,36 @@ impl<T: AsString> AsString for &T {
 }
 
 /// Parses and validates command-line arguments.
-pub fn parse_args<'a>() -> ArgMatches<'a> {
-    App::new(crate_name!())
+pub fn parse_args() -> ArgMatches {
+    Command::new(crate_name!())
         .version(crate_version!())
-        .author(crate_authors!())
         .arg(
-            Arg::with_name("input")
-                .value_name("FILE")
+            Arg::new("input")
+                .value_name("INPUT")
                 .help("Input file name")
                 .required(true),
         )
         .arg(
-            Arg::with_name("grammar")
+            Arg::new("grammar")
                 .long("grammar")
-                .short("g")
+                .short('g')
                 .value_name("FILE")
                 .help("Grammar file name")
                 .required(true),
         )
         .arg(
-            Arg::with_name("parser")
+            Arg::new("parser")
                 .help("Parser name")
                 .long("parser")
-                .short("p")
+                .short('p')
                 .value_name("NAME")
-                .possible_values(&["lllr", "ll", "lr"])
+                .value_parser(["lllr", "ll", "lr"])
                 .default_value("lllr"),
         )
         .arg(
-            Arg::with_name("output")
+            Arg::new("output")
                 .long("output")
-                .short("o")
+                .short('o')
                 .value_name("FILE")
                 .help("Output file name for the LR automaton"),
         )
